@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 
-project(mpc_controller)
+project(mpc_control)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -27,15 +27,10 @@ find_package(casadi REQUIRED)
 
 catkin_package(
         INCLUDE_DIRS include
-        LIBRARIES libwaypoint_follower
         CATKIN_DEPENDS roscpp
         std_msgs
         tf
         geometry_msgs
-        aslan_msgs
-        pcl_ros
-        pcl_conversions
-        sensor_msgs
 )
 
 include_directories(
@@ -44,25 +39,12 @@ include_directories(
         ${Eigen_INCLUDE_DIRS}
 )
 
-add_library(libwaypoint_follower
-        src/lib/libwaypoint_follower.cpp
-)
-
-add_dependencies(libwaypoint_follower
-        ${catkin_EXPORTED_TARGETS}
-)
-
-target_link_libraries(libwaypoint_follower
-       ${catkin_LIBRARIES}
-)
-
 add_executable(mpc
         src/mpc_node.cpp
         src/mpc.cpp
 )
 
 target_link_libraries(mpc
-        libwaypoint_follower
         casadi
         ${catkin_LIBRARIES}
 )
@@ -71,7 +53,7 @@ add_dependencies(mpc
         ${catkin_EXPORTED_TARGETS}
 )
 
-install(TARGETS libwaypoint_follower pure_pursuit 
+install(TARGETS mpc 
         ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})

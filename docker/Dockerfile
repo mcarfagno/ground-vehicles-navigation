@@ -59,6 +59,7 @@ RUN apt-get update && \
     ros-noetic-robot-state-publisher \
     ros-noetic-joint-state-publisher \
     ros-noetic-ackermann-msgs \
+    ros-noetic-vision-msgs \
     ros-noetic-geometry2 \
     ros-noetic-hector-gazebo \
     ros-noetic-hector-models \
