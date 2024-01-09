@@ -1,0 +1,80 @@
+<?xml version="1.0"?>
+<launch>
+
+  <!-- Gazebo settings -->
+  <arg name="cmd_timeout" default="1.0"/>
+  <arg name="paused" default="false"/>
+  <arg name="use_sim_time" default="true"/>
+  <arg name="gui" default="true"/>
+  <arg name="headless" default="false"/>
+  <arg name="debug" default="false"/>
+  <arg name="verbose" default="false"/>
+  <!-- arg name="world_name" default="$(find gem_gazebo)/worlds/simple_track_green.world"/ -->
+  <arg name="use_rviz" default="false"/>
+
+  <!-- Launch Gazebo -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="paused" value="$(arg paused)"/>
+    <arg name="use_sim_time" value="$(arg use_sim_time)"/>
+    <arg name="gui" value="$(arg gui)"/>
+    <arg name="headless" value="$(arg headless)"/>
+    <arg name="debug" value="$(arg debug)"/>
+    <arg name="verbose" value="$(arg verbose)"/>
+  </include> 
+
+  <!-- Vehicle pose -->
+  <arg name="x" default="0"/>
+  <arg name="y" default="0"/>
+  <arg name="z" default="0.05"/>
+  <arg name="yaw" default="0.0"/>
+  <arg name="roll" default="0.0"/>
+  <arg name="pitch" default="0.0"/>
+  <arg name="init_pose" value="-x $(arg x) -y $(arg y) -z $(arg z) -R $(arg roll) -P $(arg pitch) -Y $(arg yaw)"/>
+  
+  <!-- Vehicle settings -->
+  <group ns="$(arg robot_name)"> 
+  
+    <!-- robot_description is used by nodes that publish to joint_states. -->
+    <param name="robot_description" 
+           command="$(find xacro)/xacro '$(find mpc_gazebo)/urdf/gem.urdf.xacro' robotname:='$(arg robot_name)' "/>  
+  
+    <!-- Robot name is Gazebo, currently is only "gem" -->
+    <node name="spawn_model_$(arg robot_name)" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen"
+          args="-param robot_description -model $(arg robot_name) -urdf $(arg init_pose)"/>
+    
+    <!-- Load joint controller configurations from YAML file to parameter server -->
+    <rosparam file="$(find gem_gazebo)/config/gem_joint_control_params.yaml" command="load" ns="/$(arg robot_name)"/>
+
+    <!-- Load the joint controllers. One of these publishes the joint states to joint_states. -->
+    <node name="controller_spawner_$(arg robot_name)" pkg="controller_manager" type="spawner" respawn="false" output="screen" ns="/$(arg robot_name)"
+          args="left_steering_ctrlr right_steering_ctrlr left_front_wheel_ctrlr right_front_wheel_ctrlr left_rear_wheel_ctrlr right_rear_wheel_ctrlr joint_state_ctrlr"/>  
+            
+    <!-- Read joint positions from joint_states, then publish the vehicle's state to tf. -->
+    <node name="robot_state_publisher_$(arg robot_name)" pkg="robot_state_publisher" type="robot_state_publisher" respawn="false" output="screen">
+      <param name="publish_frequency" type="double" value="30.0" />
+      <remap from="/joint_states" to="/$(arg robot_name)/joint_states" />
+    </node>             
+          
+    <!-- Read joint positions from a GUI, then publish them to joint_states. -->
+    <node name="joint_state_publisher_$(arg robot_name)" pkg="joint_state_publisher" type="joint_state_publisher" respawn="false" output="screen">
+      <!-- value is important for Rviz -->
+      <param name="rate" value="0.1"/> 
+      <param name="use_gui" value="false"/>
+      <remap from="/joint_states" to="/$(arg robot_name)/joint_states" />
+    </node>  
+  
+    <!-- Control the steering, axel joints. -->
+    <node name="ackermann_controller_$(arg robot_name)" pkg="gem_gazebo" type="gem_control.py">
+      <param name="cmd_timeout" value="$(arg cmd_timeout)"/>
+      <rosparam file="$(find gem_gazebo)/config/gem_ackermann_control_params.yaml" command="load"/>
+    </node>
+    
+    <node name="gem_cmdvel_$(arg robot_name)" pkg="gem_gazebo" type="gem_cmdvel.py" />
+    
+    <!--node if="$(arg use_rviz)" name="rviz_$(arg robot_name)" pkg="rviz" type="rviz" args="-d $(find gem_description)/config_rviz/gem_gazebo_rviz.rviz" /-->
+
+      
+  </group> 
+   
+</launch>
+

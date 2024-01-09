@@ -1,0 +1,213 @@
+<?xml version="1.0" ?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- ######################################################################### -->
+
+  <gazebo reference="right_fixed_hinge_link">
+    <material>Gazebo/Red</material>
+  </gazebo>
+
+  <gazebo reference="left_fixed_hinge_link">
+    <material>Gazebo/Red</material>
+  </gazebo>
+
+  <gazebo reference="right_steering_hinge_link">
+    <mu1>10000</mu1>
+    <mu2>100000000</mu2>
+    <kp>1000000</kp>
+    <kd>1e8</kd>
+    <minDepth>0.001</minDepth>
+    <maxVel>100.0</maxVel>
+    <material>Gazebo/Blue</material>
+  </gazebo>
+
+  <gazebo reference="left_steering_hinge_link">
+    <mu1>10000</mu1>
+    <mu2>100000000</mu2>
+    <kp>1000000</kp>
+    <kd>1e8</kd>
+    <minDepth>0.001</minDepth>
+    <maxVel>100.0</maxVel>
+    <material>Gazebo/Blue</material>
+  </gazebo>
+
+  <gazebo reference="front_left_wheel_link">
+    <mu1>0.9</mu1>
+    <mu2>1000000</mu2>
+    <minDepth>0.005</minDepth>
+    <kp>1e8</kp>
+    <material>Gazebo/Black</material>
+  </gazebo>
+
+  <gazebo reference="front_right_wheel_link">
+    <mu1>0.9</mu1>
+    <mu2>1000000</mu2>
+    <minDepth>0.005</minDepth>
+    <kp>1e8</kp>
+    <material>Gazebo/Black</material>
+  </gazebo>
+
+  <gazebo reference="rear_left_wheel_link">
+    <mu1>0.9</mu1>
+    <mu2>1000000</mu2>
+    <minDepth>0.005</minDepth>
+    <kp>1e8</kp>
+    <material>Gazebo/Black</material>
+  </gazebo>
+
+  <gazebo reference="rear_right_wheel_link">
+    <mu1>0.9</mu1>
+    <mu2>1000000</mu2>
+    <minDepth>0.005</minDepth>
+    <kp>1e8</kp>
+    <material>Gazebo/Black</material>
+  </gazebo>
+
+  <!-- ************************************** -->
+
+  <!-- colors used by Gazebo -->
+
+  <gazebo reference="base_link">
+    <material>Gazebo/White</material>
+  </gazebo>
+
+  <gazebo reference="chair_link">
+    <material>Gazebo/Grey</material>
+  </gazebo>
+
+  <gazebo reference="door_link">
+    <material>Gazebo/White</material>
+  </gazebo>
+
+  <gazebo reference="front_camera_link">
+    <material>Gazebo/Black</material>
+  </gazebo>
+
+  <gazebo reference="front_rack_link">
+    <material>Gazebo/Black</material>
+  </gazebo>
+
+  <gazebo reference="rear_rack_link">
+    <material>Gazebo/Black</material>
+  </gazebo>
+
+  <gazebo reference="top_rack_link">
+    <material>Gazebo/Black</material>
+  </gazebo>
+
+  <gazebo reference="front_left_emergency_button_link">
+    <material>Gazebo/Red</material>
+  </gazebo>
+
+  <gazebo reference="front_right_emergency_button_link">
+    <material>Gazebo/Red</material>
+  </gazebo>
+
+  <gazebo reference="rear_left_emergency_button_link">
+    <material>Gazebo/Red</material>
+  </gazebo>
+
+  <gazebo reference="rear_right_emergency_button_link">
+    <material>Gazebo/Red</material>
+  </gazebo>
+
+  <gazebo reference="rear_left_light_link">
+    <material>Gazebo/Red</material>
+  </gazebo>
+
+  <gazebo reference="rear_right_light_link">
+    <material>Gazebo/Red</material>
+  </gazebo>
+
+  <gazebo reference="rear_light_bar_link">
+    <material>Gazebo/Red</material>
+  </gazebo>
+
+  <gazebo reference="front_left_head_light_link">
+    <material>Gazebo/White</material>
+  </gazebo>
+
+  <gazebo reference="front_left_head_light_link">
+    <material>Gazebo/White</material>
+  </gazebo>
+
+  <gazebo reference="front_left_turn_light_link">
+    <material>Gazebo/Orange</material>
+  </gazebo>
+
+  <gazebo reference="front_right_turn_light_link">
+    <material>Gazebo/Orange</material>
+  </gazebo>
+
+  <gazebo reference="left_I_link">
+    <material>Gazebo/Orange</material>
+  </gazebo>
+
+  <gazebo reference="right_I_link">
+    <material>Gazebo/Orange</material>
+  </gazebo>
+
+  <gazebo reference="left_blue_outer_link">
+    <material>Gazebo/Blue</material>
+  </gazebo>
+
+  <gazebo reference="right_blue_outer_link">
+    <material>Gazebo/Blue</material>
+  </gazebo>
+
+  <gazebo reference="left_antenna_link">
+    <material>Gazebo/Grey</material>
+  </gazebo>
+
+  <gazebo reference="right_antenna_link">
+    <material>Gazebo/Grey</material>
+  </gazebo>
+
+  <gazebo reference="rear_left_stop_light_link">
+    <material>Gazebo/Red</material>
+  </gazebo>
+
+  <gazebo reference="rear_right_stop_light_link">
+    <material>Gazebo/Red</material>
+  </gazebo>
+
+  <gazebo reference="front_single_camera_link">
+    <material>Gazebo/Red</material>
+  </gazebo>
+
+  <gazebo reference="IMU_link">
+    <material>Gazebo/Red</material>
+  </gazebo>
+
+  <gazebo reference="front_sonar_link">
+    <material>Gazebo/Orange</material>
+  </gazebo>
+
+  <gazebo reference="rear_sonar_link">
+    <material>Gazebo/Orange</material>
+  </gazebo>
+
+  <gazebo reference="stereo_camera_link">
+    <material>Gazebo/Red</material>
+  </gazebo>
+
+  <gazebo>
+    <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
+      <legacyModeNS>true</legacyModeNS>
+      <robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
+    </plugin>
+  </gazebo>
+
+
+  <!-- Sensor providing ground truth Odometry of base_link -->
+  <gazebo>
+     <plugin name="ground_truth" filename="libgazebo_ros_p3d.so">
+        <updateRate>30.0</updateRate>
+        <frameName>/world</frameName>  <!-- Frame of reference is the global coordinates -->
+        <bodyName>base_footprint</bodyName>
+        <topicName>base_footprint/odom</topicName>
+     </plugin>
+  </gazebo>
+
+</robot>
+
