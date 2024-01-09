@@ -25,7 +25,8 @@ struct MpcParameters {
   std::vector<double> control_rate_weights = {10.0, 100.0};
 
   // Vehicle Kin constrains
-  double wheel_base = 1.76;     //[m]
+  double wheel_base = 1.76;     // [m]
+  double vehicle_width = 0.6;   // [m]
   double v_min = 0.0;           // [m/s]
   double v_max = 20.0;          // [m/s]
   double a_min = -3.0;          // [m/ss]

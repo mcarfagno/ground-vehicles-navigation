@@ -3,7 +3,7 @@
 from visualization_msgs.msg import Marker, MarkerArray
 from nav_msgs.msg import Odometry
 from nav_msgs.msg import Path
-from vision_msgs import Detection3D, Detection3DArray
+from vision_msgs import Detection3D, Detection3DArray, ObjectHypothesisWithPose
 
 import os
 import csv
@@ -13,6 +13,8 @@ from numpy import linalg as la
 
 import rospy
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
+
+WORLD_FRAME_ID = "world"
 
 
 def dist(p1, p2):
@@ -33,7 +35,7 @@ class MpcLogger(object):
         self.obstacles = self.read_obstacles()
 
         self.odometry_sub = rospy.Subscriber("/gem/odometry", Odometry, queue_size=1)
-        self.trajectory_pub = rospy.Publisher("/mpc/trajectory", Path, queue_size=1)
+        self.path_pub = rospy.Publisher("/mpc/path", Path, queue_size=1)
         self.obstacles_pub = rospy.Publisher(
             "/mpc/obstacles", Detection3DArray, queue_size=1
         )
@@ -46,9 +48,9 @@ class MpcLogger(object):
         filename = os.path.join(dirname, "../data/waypoints.csv")
 
         with open(filename) as f:
-            path_points = [tuple(line) for line in csv.reader(f)]
+            points = [tuple(line) for line in csv.reader(f)]
 
-        return path_points
+        return points
 
     def read_obstacles(self):
         dirname = os.path.dirname(__file__)
@@ -58,6 +60,61 @@ class MpcLogger(object):
             obs = [tuple(line) for line in csv.reader(f)]
 
         return obs
+
+    def publish_path(self):
+        msg = Path()
+        msg.header.stamp = rospy.time.now()
+
+        for pt in self.waypoints:
+            pose = PoseStamped()
+            pose.pose.position.x = pt[0]
+            pose.pose.position.y = pt[1]
+            q = quaternion_from_euler((0, 0, pt[2]))
+            pose.pose.orientation.x = q[0]
+            pose.pose.orientation.y = q[1]
+            pose.pose.orientation.z = q[2]
+            pose.pose.orientation.w = q[3]
+            msg.poses.append(pose)
+        self.path_pub.publish(msg)
+
+    def publish_obstacles(self):
+        msg = Detection3DArray()
+        msg.header.stamp = rospy.time.now()
+
+        for idx, o in enumerate(self.obstacles):
+            obstacle = ObjectHypothesisWithPose()
+            obstacle.id = idx
+            obstacle.pose.pose.position.x = o[0]
+            obstacle.pose.pose.position.y = o[1]
+
+            d = Detection3D()
+            d.results.append(obstacle)
+            msg.detections.append(d)
+        self.obstacles_pub.publish(msg)
+
+        msg_viz = MarkerArray()
+        msg_viz.header.stamp = rospy.time.now()
+        for idx, o in enumerate(self.obstacles):
+            marker = Marker()
+            marker.header.frame_id = WORLD_FRAME_ID
+            marker.header.stamp = rospy.Time.now()
+
+            marker.type = 3
+            marker.action = 0
+            marker.id = idx
+            marker.ns = "mpc/obs"
+            marker.scale.x = 0.5
+            marker.scale.y = 0.5
+            marker.scale.z = 2.0
+
+            marker.color.r = 0.0
+            marker.color.g = 1.0
+            marker.color.b = 0.0
+            marker.color.a = 0.6
+            marker.pose.position.x = o[0]
+            marker.pose.position.y = o[1]
+            msg_viz.markers.append(marker)
+        self.obstacles_viz_pub.publish(msg_viz)
 
     def compute_cte(self, curr_x, curr_y, curr_yaw):
         dx = [front_x - x for x in self.waypoints[:, 0]]
@@ -80,7 +137,8 @@ class MpcLogger(object):
         while not rospy.is_shutdown():
             # TODO: check for goal and plot results
 
-            # TODO: publish Path and Obstacles
+            self.publish_path()
+            self.publish_obstacles()
 
             self.rate.sleep()
 
