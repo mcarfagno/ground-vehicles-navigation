@@ -32,6 +32,7 @@
   <arg name="init_pose" value="-x $(arg x) -y $(arg y) -z $(arg z) -R $(arg roll) -P $(arg pitch) -Y $(arg yaw)"/>
   
   <!-- Vehicle settings -->
+  <arg name="robot_name" default="gem"/>
   <group ns="$(arg robot_name)"> 
   
     <!-- robot_description is used by nodes that publish to joint_states. -->
