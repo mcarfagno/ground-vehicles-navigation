@@ -14,8 +14,8 @@ find_package(catkin REQUIRED COMPONENTS
 
 catkin_package()
 
-#catkin_install_python(PROGRAMS scripts/wp_loader.py
-#                      DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+catkin_install_python(PROGRAMS scripts/mpc_sim.py
+                      DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 install(DIRECTORY config launch
         DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
