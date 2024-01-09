@@ -79,7 +79,7 @@ RUN source /opt/ros/noetic/setup.bash && \
 
 # *** Install and build MPC assignment packages ***
 RUN mkdir ~/mpc_ws
-COPY ../src/mpc_gazebo /mpc_ws/src/mpc_gazebo
+COPY src/mpc_gazebo /mpc_ws/src/mpc_gazebo
 
 WORKDIR /mpc_ws
 RUN source /opt/ros/noetic/setup.bash && \
@@ -88,8 +88,8 @@ RUN source /opt/ros/noetic/setup.bash && \
 RUN echo 'ALL ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 RUN echo 'Defaults env_keep += "DEBUG ROS_DISTRO"' >> /etc/sudoers
 
-COPY env.sh /etc/profile.d/ade_env.sh
-COPY entrypoint /ade_entrypoint
+COPY docker/env.sh /etc/profile.d/ade_env.sh
+COPY docker/entrypoint /ade_entrypoint
 
 ENTRYPOINT ["/ade_entrypoint"]
 CMD ["/bin/sh", "-c", "trap 'exit 147' TERM; tail -f /dev/null & wait ${!}"]
