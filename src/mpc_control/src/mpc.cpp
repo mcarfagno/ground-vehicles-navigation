@@ -4,7 +4,7 @@
 
 namespace mpc {
 
-KinematicMpc::KinematicMpc(const KinematicMpcParameters &p) {
+KinematicMpc::KinematicMpc(const MpcParameters &p) {
   N_ = p.N;
   dt_ = p.DT;
 
@@ -228,7 +228,7 @@ void KinematicMpc::set_initial_state(casadi::DMDict &in) const {
 }
 
 void KinematicMpc::set_prev_cmd(casadi::DMDict &in,
-                                const KinematicMpcCmd &cmd) const {
+                                const MpcCmd &cmd) const {
   in[INITIAL_CONTROL_DICT_KEY] = casadi::DM({cmd.acceleration, cmd.steer});
 }
 
@@ -241,8 +241,8 @@ void KinematicMpc::set_reference() const {
   in[TRAJECTORY_DICT_KEY] = tmp;
 }
 
-KinematicMpcCmd KinematicMpc::get_control(casadi::DMDict &in) const {
+MpcCmd KinematicMpc::get_control(casadi::DMDict &in) const {
   const auto &tmp = in["U_opti"];
-  return KinematicMpcCmd(tmp(0, 0).scalar(), tmp(0, 1).scalar());
+  return MpcCmd(tmp(0, 0).scalar(), tmp(0, 1).scalar());
 }
 } // namespace mpc

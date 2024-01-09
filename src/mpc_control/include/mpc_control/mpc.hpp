@@ -25,6 +25,7 @@ struct MpcParameters {
   double jerk_max = 1.5;
   double steer_rate_min = -0.5;
   double steer_rate_max = 0.5;
+  double obstacle_avoidance_dist = 0.5;
   std::vector<double> state_error_weights = {1.0, 1.0, 1.0, 0.1};
   std::vector<double> control_rate_weights = {10.0, 100.0};
   double tol = 1e-3;
@@ -33,11 +34,11 @@ struct MpcParameters {
   bool verbose = false;
 };
 
-struct KinematicMpcCmd {
+struct MpcCmd {
   double acceleration{0.0};
   double steer{0.0};
-  KinematicMpcCmd() {}
-  KinematicMpcCmd(double a, double df) : acceleration(a), steer(df) {}
+  MpcCmd() {}
+  MpcCmd(double a, double df) : acceleration(a), steer(df) {}
 };
 
 class KinematicMpc {
@@ -70,7 +71,7 @@ private:
                                      const casadi::DM &x) const;
 
 public:
-  explicit KinematicMpc(const KinematicMpcParameters &p);
+  explicit KinematicMpc(const MpcParameters &p);
   ~KinematicMpc() {}
 
   std::optional<std::pair<casadi::DMDict, casadi::Dict>>
@@ -78,11 +79,11 @@ public:
 
   void set_initial_state() const;
 
-  void set_prev_cmd(casadi::DMDict &in, const KinematicMpcCmd &cmd) const;
+  void set_prev_cmd(casadi::DMDict &in, const MpcCmd &cmd) const;
 
   void set_reference() const;
 
-  KinematicMpcCmd get_control(casadi::DMDict &in) const;
+  MpcCmd get_control(casadi::DMDict &in) const;
 };
 
 } // namespace mpc
