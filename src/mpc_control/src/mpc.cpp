@@ -227,8 +227,7 @@ void KinematicMpc::set_initial_state(casadi::DMDict &in) const {
       {state.position.x(), state.position.y(), state.heading, state.speed});
 }
 
-void KinematicMpc::set_prev_cmd(casadi::DMDict &in,
-                                const MpcCmd &cmd) const {
+void KinematicMpc::set_prev_cmd(casadi::DMDict &in, const MpcCmd &cmd) const {
   in[INITIAL_CONTROL_DICT_KEY] = casadi::DM({cmd.acceleration, cmd.steer});
 }
 
@@ -242,7 +241,7 @@ void KinematicMpc::set_reference() const {
 }
 
 MpcCmd KinematicMpc::get_control(casadi::DMDict &in) const {
-  const auto &tmp = in["U_opti"];
+  const auto &tmp = in[OPTIMIZED_CONTROL_DICT_KEY];
   return MpcCmd(tmp(0, 0).scalar(), tmp(0, 1).scalar());
 }
 } // namespace mpc
