@@ -69,19 +69,11 @@ RUN apt-get update && \
     ros-noetic-velodyne-simulator \
     && rm -rf /var/lib/apt/lists/* /tmp/apt-packages
 
-# *** Install and build Polaris GEM e2 Simulator ***
-RUN mkdir -p ~/gem_ws/src
-WORKDIR /gem_ws/src
-RUN git clone https://gitlab.engr.illinois.edu/gemillins/POLARIS_GEM_e2.git
-
-WORKDIR /gem_ws
-RUN source /opt/ros/noetic/setup.bash && \
-    catkin_make
-
-# *** Install and build MPC assignment packages ***
 RUN mkdir ~/mpc_ws
 COPY src/mpc_gazebo /mpc_ws/src/mpc_gazebo
 
+WORKDIR /mpc_ws/src
+RUN git clone https://gitlab.engr.illinois.edu/gemillins/POLARIS_GEM_e2.git
 WORKDIR /mpc_ws
 RUN source /opt/ros/noetic/setup.bash && \
     catkin_make
