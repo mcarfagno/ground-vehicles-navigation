@@ -3,8 +3,19 @@
 
 #include "mpc_control/mpc.hpp"
 #include <memory>
+#include <ros/ros.h>
 
 namespace mpc {
 // TODO(marcello): mpc ROS node
+class MpcNode {
+public:
+  MpcNode(){};
+  ~MpcNode(){};
+  void run();
+
+private:
+  ros::NodeHandle nh_;
+};
+
 } // namespace mpc
 #endif
