@@ -225,12 +225,10 @@ casadi::DM KinematicMpc::reinterpolate_reference(const casadi::DM &traj,
 
 void KinematicMpc::set_initial_state(casadi::DMDict &in,
                                      const nav_msgs::Odometry &odom) const {
-  // TODO: get heading from odometry
-  // TODO: check twist
-  double heading;
-  in[INITIAL_STATE_DICT_KEY] =
-      casadi::DM({odom.pose.pose.position.x, odom.pose.pose.position.y, heading,
-                  odom.twist.twist.linear.x});
+  in[INITIAL_STATE_DICT_KEY] = casadi::DM(
+      {odom.pose.pose.position.x, odom.pose.pose.position.y,
+       tf::getYaw(odom.pose.pose.orientation),
+       std::hypot(odom.twist.twist.linear.x, odom.twist.twist.linear.y)});
 }
 
 void KinematicMpc::set_prev_cmd(casadi::DMDict &in, const MpcCmd &cmd) const {
@@ -241,11 +239,9 @@ void KinematicMpc::set_reference(casadi::DMDict &in,
                                  const nav_msgs::Path &path) const {
   auto tmp = casadi::DM(path.poses.size(), nx_);
   for (std::size_t i = 0; i < path.poses.size(); i++) {
-    // TODO: get heading from odometry
-    double heading;
-    tmp(i, casadi::Slice()) = {path.poses[i].pose.position.x,
-                               path.poses[i].pose.position.y, heading,
-                               MPC_REF_SPEED};
+    tmp(i, casadi::Slice()) = {
+        path.poses[i].pose.position.x, path.poses[i].pose.position.y,
+        tf::getYaw(path.poses[i].pose.orientation), MPC_REF_SPEED};
   }
   in[TRAJECTORY_DICT_KEY] = tmp;
 }
