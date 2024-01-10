@@ -1,13 +1,15 @@
 #ifndef MPC_CONTROLLER__MPC_HPP_
 #define MPC_CONTROLLER__MPC_HPP_
 
+#include "casadi/casadi.hpp"
 #include <chrono>
 #include <iostream>
 #include <memory>
+#include <nav_msgs/Odometry.h>
+#include <nav_msgs/Path.h>
 #include <utility>
 #include <vector>
-
-#include "casadi/casadi.hpp"
+#include <vision_msgs/Detection3DArray.h>
 
 namespace mpc {
 
@@ -89,14 +91,15 @@ public:
   std::optional<std::pair<casadi::DMDict, casadi::Dict>>
   solve(const casadi::DMDict &in);
 
-  void set_initial_state(casadi::DMDict &in, const Odometry &odom) const;
+  void set_initial_state(casadi::DMDict &in,
+                         const nav_msgs::Odometry &odom) const;
 
   void set_prev_cmd(casadi::DMDict &in, const MpcCmd &cmd) const;
 
-  void set_reference(casadi::DMDict &in, const Path &path) const;
+  void set_reference(casadi::DMDict &in, const nav_msgs::Path &path) const;
 
-  void KinematicMpc::set_obstacles(casadi::DMDict &in,
-                                   const Detection3DArray &obs) const;
+  void set_obstacles(casadi::DMDict &in,
+                     const vision_msgs::Detection3DArray &obs) const;
 
   MpcCmd get_control(casadi::DMDict &in) const;
 };
