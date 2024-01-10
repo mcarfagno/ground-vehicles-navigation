@@ -12,6 +12,7 @@
   <depend>nav_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>ackermann_msgs</depend>
+  <depend>vision_msgs</depend>
   <depend>std_msgs</depend>
   <depend>tf</depend>
 </package>
