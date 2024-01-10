@@ -44,6 +44,7 @@ include_directories(
 )
 
 add_executable(mpc
+	src/mpc_main.cpp
         src/mpc_node.cpp
         src/mpc.cpp
 )

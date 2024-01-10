@@ -2,4 +2,5 @@
 
 namespace mpc {
 // TODO(marcello): implement node
+void MpcNode::run() { return; }
 } // namespace mpc
