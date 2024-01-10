@@ -11,6 +11,8 @@
 
 namespace mpc {
 
+static const double MPC_REF_SPEED = 5.55; // [m/s] -> 20km/h
+static const char OBSTACLES_DICT_KEY[] = "obstacles";
 static const char TRAJECTORY_DICT_KEY[] = "ref_trajectory";
 static const char INITIAL_STATE_DICT_KEY[] = "x_initial_condition";
 static const char INITIAL_CONTROL_DICT_KEY[] = "u_initial_condition";
@@ -19,16 +21,15 @@ static const char OPTIMIZED_CONTROL_DICT_KEY[] = "u_optimized";
 struct MpcParameters {
   // Mpc problem settings
   std::size_t N = 10;
-  double DT = 0.2;
+  double DT = 0.2;                      // [s]
   double obstacle_avoidance_dist = 0.5; // [m]
   std::vector<double> state_error_weights = {1.0, 1.0, 1.0, 0.1};
   std::vector<double> control_rate_weights = {10.0, 100.0};
 
   // Vehicle Kin constrains
-  double wheel_base = 1.76;     // [m]
-  double vehicle_width = 0.6;   // [m]
+  double wheel_base = 1.76;     //[m]
   double v_min = 0.0;           // [m/s]
-  double v_max = 20.0;          // [m/s]
+  double v_max = 10.0;          // [m/s]
   double a_min = -3.0;          // [m/ss]
   double a_max = 2.0;           // [m/ss]
   double jerk_min = -1.5;       // [m/sss]
@@ -88,11 +89,14 @@ public:
   std::optional<std::pair<casadi::DMDict, casadi::Dict>>
   solve(const casadi::DMDict &in);
 
-  void set_initial_state() const;
+  void set_initial_state(casadi::DMDict &in, const Odometry &odom) const;
 
   void set_prev_cmd(casadi::DMDict &in, const MpcCmd &cmd) const;
 
-  void set_reference() const;
+  void set_reference(casadi::DMDict &in, const Path &path) const;
+
+  void KinematicMpc::set_obstacles(casadi::DMDict &in,
+                                   const Detection3DArray &obs) const;
 
   MpcCmd get_control(casadi::DMDict &in) const;
 };

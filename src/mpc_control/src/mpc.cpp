@@ -91,6 +91,8 @@ KinematicMpc::KinematicMpc(const MpcParameters &p) {
   opti_.subject_to(psi_dv(0) == trajectory_initial_conditions_(2));
   opti_.subject_to(v_dv(0) == trajectory_initial_conditions_(3));
 
+  // TODO: obstacle avoidance
+
   // input rate of change
   opti_.subject_to(opti_.bounded(p.jerk_min * dt_ - sl_acc_dv(0),
                                  acc_dv(0) - optimal_control_prev_(0),
@@ -127,6 +129,7 @@ KinematicMpc::KinematicMpc(const MpcParameters &p) {
 
 std::optional<std::pair<casadi::DMDict, casadi::Dict>>
 KinematicMpc::solve(const casadi::DMDict &in) {
+  // TODO: get obstacles
   const auto &state_initial_condition = in.at(INITIAL_STATE_DICT_KEY);
   const auto &trajectory = in.at(TRAJECTORY_DICT_KEY);
   const auto &control_initial_condition = in.at(INITIAL_CONTROL_DICT_KEY);
@@ -137,7 +140,7 @@ KinematicMpc::solve(const casadi::DMDict &in) {
   opti_.set_value(reference_trajectory_, trajectory_reinterp);
   opti_.set_value(optimal_control_prev_, control_initial_condition);
 
-  // TODO(marcello): warm start: set the initial values of optimal_trajectory_
+  // TODO: implement warm start: set the initial values of optimal_trajectory_
   // and optimal_control_ decision variables to reduce iterations
   try {
     auto solution = opti_.solve();
@@ -177,10 +180,8 @@ casadi::DM KinematicMpc::reinterpolate_reference(const casadi::DM &traj,
   }
 
   auto start_dist = cdist[closest_idx];
-  // NOTE: in the original implementation the interpolation points are equally
-  // spaced given a target speed, but in our case the input trajectory does not
-  // have a fixed speed. for interpolation purposes I will be using the average
-  // speed. this should avoid edge cases (e.g start or end v are 0.0)
+  // NOTE: the interpolation points are equally
+  // spaced given the average speed
   double v = casadi::norm_1(traj(Slice(), 3).get_elements());
   v /= traj(Slice(), 3).size1();
 
@@ -222,22 +223,41 @@ casadi::DM KinematicMpc::reinterpolate_reference(const casadi::DM &traj,
   return waypoints;
 }
 
-void KinematicMpc::set_initial_state(casadi::DMDict &in) const {
-  in[INITIAL_STATE_DICT_KEY] = casadi::DM(
-      {state.position.x(), state.position.y(), state.heading, state.speed});
+void KinematicMpc::set_initial_state(casadi::DMDict &in,
+                                     const Odometry &odom) const {
+  // TODO: get heading from odometry
+  // TODO: check twist
+  double heading;
+  in[INITIAL_STATE_DICT_KEY] =
+      casadi::DM({odom.pose.pose.position.x(), odom.pose.pose.position.y(),
+                  heading, odom.twist.twist.linear.x});
 }
 
 void KinematicMpc::set_prev_cmd(casadi::DMDict &in, const MpcCmd &cmd) const {
   in[INITIAL_CONTROL_DICT_KEY] = casadi::DM({cmd.acceleration, cmd.steer});
 }
 
-void KinematicMpc::set_reference() const {
+void KinematicMpc::set_reference(casadi::DMDict &in, const Path &path) const {
   auto tmp = casadi::DM(traj.size(), nx_);
-  for (std::size_t i = 0; i < traj.size(); i++) {
-    tmp(i, casadi::Slice()) = {traj[i].position.x(), traj[i].position.y(),
-                               traj[i].heading, traj[i].speed};
+  for (std::size_t i = 0; i < path.poses.size(); i++) {
+    // TODO: get heading from odometry
+    double heading;
+    tmp(i, casadi::Slice()) = {path.poses[i].pose.position.x(),
+                               path.poses[i].pose.position.y() heading,
+                               MPC_REF_SPEED};
   }
   in[TRAJECTORY_DICT_KEY] = tmp;
+}
+
+void KinematicMpc::set_obstacles(casadi::DMDict &in,
+                                 const Detection3DArray &obs) const {
+  auto tmp = casadi::DM(obs.detections.size(), 2);
+  for (std::size_t i = 0; i < obs.size(); i++) {
+    tmp(i, casadi::Slice()) = {
+        obs.detections[i].results.front().pose.pose.position.x(),
+        obs.detections[i].results.front().pose.pose.position.y()};
+  }
+  in[OBSTACLES_DICT_KEY] = tmp;
 }
 
 MpcCmd KinematicMpc::get_control(casadi::DMDict &in) const {
