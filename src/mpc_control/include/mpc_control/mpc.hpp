@@ -3,11 +3,11 @@
 
 #include "casadi/casadi.hpp"
 #include <chrono>
-#include <tf/transform_datatypes.h>
 #include <iostream>
 #include <memory>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
+#include <tf/transform_datatypes.h>
 #include <utility>
 #include <vector>
 #include <vision_msgs/Detection3DArray.h>
@@ -21,16 +21,11 @@ static const char INITIAL_STATE_DICT_KEY[] = "x_initial_condition";
 static const char INITIAL_CONTROL_DICT_KEY[] = "u_initial_condition";
 static const char OPTIMIZED_CONTROL_DICT_KEY[] = "u_optimized";
 
-struct MpcParameters {
-  // Mpc problem settings
-  std::size_t N = 10;
-  double DT = 0.2;                      // [s]
-  double obstacle_avoidance_dist = 0.5; // [m]
-  std::vector<double> state_error_weights = {1.0, 1.0, 1.0, 0.1};
-  std::vector<double> control_rate_weights = {10.0, 100.0};
-
+/* @brief Kinematic model of the POLARIS_GEM vehicle
+ * */
+struct KinematicModel {
   // Vehicle Kin constrains
-  double wheel_base = 1.76;     //[m]
+  double wheel_base = 1.75;     // [m]
   double v_min = 0.0;           // [m/s]
   double v_max = 10.0;          // [m/s]
   double a_min = -3.0;          // [m/ss]
@@ -41,6 +36,23 @@ struct MpcParameters {
   double steer_max = 0.61;      // [rad]
   double steer_rate_min = -0.5; // [rad/s]
   double steer_rate_max = 0.5;  // [rad/s]
+
+  // Vehicle Kin function
+  const std::size_t nx = 4;  // [x,y,yaw,v]
+  const std::size_t nu = 2;  // [a, steer]
+  casadi::MX f(const casadi::MX &x, const casadi::MX &u) const {
+    return horzcat(x(3) * cos(x(2)), x(3) * sin(x(2)),
+                   x(3) * tan(u(1)) / wheel_base, u(0));
+  };
+};
+
+struct MpcParameters {
+  // Mpc problem settings
+  std::size_t N = 10;
+  double DT = 0.2;                      // [s]
+  double obstacle_avoidance_dist = 0.5; // [m]
+  std::vector<double> state_error_weights = {1.0, 1.0, 1.0, 0.1};
+  std::vector<double> control_rate_weights = {10.0, 100.0};
 
   // IPOPT Settings
   double tol = 1e-3;
@@ -60,8 +72,8 @@ class KinematicMpc {
 private:
   float dt_;
   std::size_t N_;
-  const std::size_t nx_ = 4; // [x,y,yaw,v]
-  const std::size_t nu_ = 2; // [a, steer]
+  std::size_t nx_; // [x,y,yaw,v]
+  std::size_t nu_; // [a, steer]
 
   // Problem placeholder obj
   casadi::Opti opti_;
@@ -86,7 +98,7 @@ private:
                                      const casadi::DM &x) const;
 
 public:
-  explicit KinematicMpc(const MpcParameters &p);
+  explicit KinematicMpc(const KinematicModel &k, const MpcParameters &p);
   ~KinematicMpc() {}
 
   std::optional<std::pair<casadi::DMDict, casadi::Dict>>

@@ -4,10 +4,13 @@
 
 namespace mpc {
 
-KinematicMpc::KinematicMpc(const MpcParameters &p) {
-  N_ = p.N;
-  dt_ = p.DT;
+KinematicMpc::KinematicMpc(const KinematicModel &m, const MpcParameters &p) {
 
+  // size variables
+  N_ = p.N;   // horizon
+  dt_ = p.DT; // time step
+  nx_ = m.nx; // n state vars
+  nu_ = m.nu; // n control vars
   casadi::Slice all;
 
   // decision variables
@@ -25,7 +28,7 @@ KinematicMpc::KinematicMpc(const MpcParameters &p) {
   auto sl_acc_dv = slack_(all, 0);
   auto sl_steer_dv = slack_(all, 1);
 
-  // parameters
+  // problem parameters
   trajectory_initial_conditions_ = opti_.parameter(nx_);
   optimal_control_prev_ = opti_.parameter(nu_);
   reference_trajectory_ = opti_.parameter(N_, nx_);
@@ -40,18 +43,14 @@ KinematicMpc::KinematicMpc(const MpcParameters &p) {
 
   // kinematic constrains
   // NOTE: bicycle model ODE + RK4 integrator
-  auto f = [this, p](const casadi::MX &x, const casadi::MX &u) {
-    return horzcat(x(3) * cos(x(2)), x(3) * sin(x(2)),
-                   x(3) * tan(u(1)) / p.wheel_base, u(0));
-  };
   for (std::size_t k = 0; k < N_; k++) {
-    casadi::MX k1 = f(optimal_trajectory_(k, all), optimal_control_(k, all));
-    casadi::MX k2 =
-        f(optimal_trajectory_(k, all) + dt_ / 2 * k1, optimal_control_(k, all));
-    casadi::MX k3 =
-        f(optimal_trajectory_(k, all) + dt_ / 2 * k2, optimal_control_(k, all));
+    casadi::MX k1 = m.f(optimal_trajectory_(k, all), optimal_control_(k, all));
+    casadi::MX k2 = m.f(optimal_trajectory_(k, all) + dt_ / 2 * k1,
+                        optimal_control_(k, all));
+    casadi::MX k3 = m.f(optimal_trajectory_(k, all) + dt_ / 2 * k2,
+                        optimal_control_(k, all));
     casadi::MX k4 =
-        f(optimal_trajectory_(k, all) + dt_ * k3, optimal_control_(k, all));
+        m.f(optimal_trajectory_(k, all) + dt_ * k3, optimal_control_(k, all));
     casadi::MX x_next =
         optimal_trajectory_(k, all) + dt_ / 6 * (k1 + 2 * k2 + 2 * k3 + k4);
     opti_.subject_to(optimal_trajectory_(k + 1, all) == x_next);
@@ -79,11 +78,11 @@ KinematicMpc::KinematicMpc(const MpcParameters &p) {
   opti_.minimize(cost);
 
   // state bound constraints
-  opti_.subject_to(opti_.bounded(p.v_min, v_dv, p.v_max));
+  opti_.subject_to(opti_.bounded(m.v_min, v_dv, m.v_max));
 
   // acceleration and steer constrains
-  opti_.subject_to(opti_.bounded(p.a_min, acc_dv, p.a_max));
-  opti_.subject_to(opti_.bounded(p.steer_min, steer_dv, p.steer_max));
+  opti_.subject_to(opti_.bounded(m.a_min, acc_dv, m.a_max));
+  opti_.subject_to(opti_.bounded(m.steer_min, steer_dv, m.steer_max));
 
   // initial state constraint
   opti_.subject_to(x_dv(0) == trajectory_initial_conditions_(0));
@@ -94,22 +93,22 @@ KinematicMpc::KinematicMpc(const MpcParameters &p) {
   // TODO: obstacle avoidance
 
   // input rate of change
-  opti_.subject_to(opti_.bounded(p.jerk_min * dt_ - sl_acc_dv(0),
+  opti_.subject_to(opti_.bounded(m.jerk_min * dt_ - sl_acc_dv(0),
                                  acc_dv(0) - optimal_control_prev_(0),
-                                 p.jerk_max * dt_ + sl_acc_dv(0)));
+                                 m.jerk_max * dt_ + sl_acc_dv(0)));
 
-  opti_.subject_to(opti_.bounded(p.steer_rate_min * dt_ - sl_steer_dv(0),
+  opti_.subject_to(opti_.bounded(m.steer_rate_min * dt_ - sl_steer_dv(0),
                                  steer_dv(0) - optimal_control_prev_(1),
-                                 p.steer_rate_max * dt_ + sl_steer_dv(0)));
+                                 m.steer_rate_max * dt_ + sl_steer_dv(0)));
 
   for (std::size_t i = 0; i < N_ - 1; i++) {
-    opti_.subject_to(opti_.bounded(p.jerk_min * dt_ - sl_acc_dv(i + 1),
+    opti_.subject_to(opti_.bounded(m.jerk_min * dt_ - sl_acc_dv(i + 1),
                                    acc_dv(i + 1) - acc_dv(i),
-                                   p.jerk_max * dt_ + sl_acc_dv(i + 1)));
+                                   m.jerk_max * dt_ + sl_acc_dv(i + 1)));
     opti_.subject_to(
-        opti_.bounded(p.steer_rate_min * dt_ - sl_steer_dv(i + 1),
+        opti_.bounded(m.steer_rate_min * dt_ - sl_steer_dv(i + 1),
                       steer_dv(i + 1) - steer_dv(i),
-                      p.steer_rate_max * dt_ + sl_steer_dv(i + 1)));
+                      m.steer_rate_max * dt_ + sl_steer_dv(i + 1)));
   }
 
   // slack must be positive
