@@ -5,12 +5,7 @@
 #include <chrono>
 #include <iostream>
 #include <memory>
-#include <nav_msgs/Odometry.h>
-#include <nav_msgs/Path.h>
-#include <tf/transform_datatypes.h>
-#include <utility>
 #include <vector>
-#include <vision_msgs/Detection3DArray.h>
 
 namespace mpc {
 
@@ -20,6 +15,7 @@ static const char TRAJECTORY_DICT_KEY[] = "ref_trajectory";
 static const char INITIAL_STATE_DICT_KEY[] = "x_initial_condition";
 static const char INITIAL_CONTROL_DICT_KEY[] = "u_initial_condition";
 static const char OPTIMIZED_CONTROL_DICT_KEY[] = "u_optimized";
+static const char OPTIMIZED_TRAJECTORY_DICT_KEY[] = "x_optimized";
 
 /* @brief Kinematic model of the POLARIS_GEM vehicle
  * */
@@ -38,8 +34,8 @@ struct KinematicModel {
   double steer_rate_max = 0.5;  // [rad/s]
 
   // Vehicle Kin function
-  const std::size_t nx = 4;  // [x,y,yaw,v]
-  const std::size_t nu = 2;  // [a, steer]
+  const std::size_t nx = 4; // [x,y,yaw,v]
+  const std::size_t nu = 2; // [a, steer]
   casadi::MX f(const casadi::MX &x, const casadi::MX &u) const {
     return horzcat(x(3) * cos(x(2)), x(3) * sin(x(2)),
                    x(3) * tan(u(1)) / wheel_base, u(0));
@@ -101,20 +97,7 @@ public:
   explicit KinematicMpc(const KinematicModel &k, const MpcParameters &p);
   ~KinematicMpc() {}
 
-  std::optional<std::pair<casadi::DMDict, casadi::Dict>>
-  solve(const casadi::DMDict &in);
-
-  void set_initial_state(casadi::DMDict &in,
-                         const nav_msgs::Odometry &odom) const;
-
-  void set_prev_cmd(casadi::DMDict &in, const MpcCmd &cmd) const;
-
-  void set_reference(casadi::DMDict &in, const nav_msgs::Path &path) const;
-
-  void set_obstacles(casadi::DMDict &in,
-                     const vision_msgs::Detection3DArray &obs) const;
-
-  MpcCmd get_control(casadi::DMDict &in) const;
+  std::optional<casadi::DMDict> solve(const casadi::DMDict &in);
 };
 
 } // namespace mpc

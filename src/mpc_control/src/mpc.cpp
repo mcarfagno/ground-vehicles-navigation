@@ -1,12 +1,11 @@
 #include "mpc_control/mpc.hpp"
-
 #include <stdexcept>
 
 namespace mpc {
 
 KinematicMpc::KinematicMpc(const KinematicModel &m, const MpcParameters &p) {
 
-  // size variables
+  // problem size variables
   N_ = p.N;   // horizon
   dt_ = p.DT; // time step
   nx_ = m.nx; // n state vars
@@ -126,8 +125,7 @@ KinematicMpc::KinematicMpc(const KinematicModel &m, const MpcParameters &p) {
   opti_.solver("ipopt", p_opts, s_opts);
 }
 
-std::optional<std::pair<casadi::DMDict, casadi::Dict>>
-KinematicMpc::solve(const casadi::DMDict &in) {
+std::optional<casadi::DMDict> KinematicMpc::solve(const casadi::DMDict &in) {
   // TODO: get obstacles
   const auto &state_initial_condition = in.at(INITIAL_STATE_DICT_KEY);
   const auto &trajectory = in.at(TRAJECTORY_DICT_KEY);
@@ -135,6 +133,7 @@ KinematicMpc::solve(const casadi::DMDict &in) {
   auto trajectory_reinterp =
       reinterpolate_reference(trajectory, state_initial_condition);
 
+  // set problem parameters
   opti_.set_value(trajectory_initial_conditions_, state_initial_condition);
   opti_.set_value(reference_trajectory_, trajectory_reinterp);
   opti_.set_value(optimal_control_prev_, control_initial_condition);
@@ -144,9 +143,9 @@ KinematicMpc::solve(const casadi::DMDict &in) {
   try {
     auto solution = opti_.solve();
     casadi::DMDict out;
-    out["X_opti"] = solution.value(optimal_trajectory_);
-    out["U_opti"] = solution.value(optimal_control_);
-    return std::make_pair(std::move(out), solution.stats());
+    out[OPTIMIZED_TRAJECTORY_DICT_KEY] = solution.value(optimal_trajectory_);
+    out[OPTIMIZED_CONTROL_DICT_KEY] = solution.value(optimal_control_);
+    return std::move(out);
   } catch (const std::exception &e) {
     // NOTE: exceptions are raised when the optimizer fails (e.g. time exceeded)
     std::cerr << e.what() << std::endl;
@@ -222,42 +221,4 @@ casadi::DM KinematicMpc::reinterpolate_reference(const casadi::DM &traj,
   return waypoints;
 }
 
-void KinematicMpc::set_initial_state(casadi::DMDict &in,
-                                     const nav_msgs::Odometry &odom) const {
-  in[INITIAL_STATE_DICT_KEY] = casadi::DM(
-      {odom.pose.pose.position.x, odom.pose.pose.position.y,
-       tf::getYaw(odom.pose.pose.orientation),
-       std::hypot(odom.twist.twist.linear.x, odom.twist.twist.linear.y)});
-}
-
-void KinematicMpc::set_prev_cmd(casadi::DMDict &in, const MpcCmd &cmd) const {
-  in[INITIAL_CONTROL_DICT_KEY] = casadi::DM({cmd.acceleration, cmd.steer});
-}
-
-void KinematicMpc::set_reference(casadi::DMDict &in,
-                                 const nav_msgs::Path &path) const {
-  auto tmp = casadi::DM(path.poses.size(), nx_);
-  for (std::size_t i = 0; i < path.poses.size(); i++) {
-    tmp(i, casadi::Slice()) = {
-        path.poses[i].pose.position.x, path.poses[i].pose.position.y,
-        tf::getYaw(path.poses[i].pose.orientation), MPC_REF_SPEED};
-  }
-  in[TRAJECTORY_DICT_KEY] = tmp;
-}
-
-void KinematicMpc::set_obstacles(
-    casadi::DMDict &in, const vision_msgs::Detection3DArray &obs) const {
-  auto tmp = casadi::DM(obs.detections.size(), 2);
-  for (std::size_t i = 0; i < obs.detections.size(); i++) {
-    tmp(i, casadi::Slice()) = {
-        obs.detections[i].results.front().pose.pose.position.x,
-        obs.detections[i].results.front().pose.pose.position.y};
-  }
-  in[OBSTACLES_DICT_KEY] = tmp;
-}
-
-MpcCmd KinematicMpc::get_control(casadi::DMDict &in) const {
-  const auto &tmp = in[OPTIMIZED_CONTROL_DICT_KEY];
-  return MpcCmd(tmp(0, 0).scalar(), tmp(0, 1).scalar());
-}
 } // namespace mpc
