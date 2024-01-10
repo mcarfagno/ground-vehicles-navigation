@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 
 from visualization_msgs.msg import Marker, MarkerArray
-from nav_msgs.msg import Odometry
-from nav_msgs.msg import Path
-from vision_msgs import Detection3D, Detection3DArray, ObjectHypothesisWithPose
+from nav_msgs.msg import Odometry,Path
+from geometry_msgs.msg import PoseStamped
+from vision_msgs.msg import Detection3D, Detection3DArray, ObjectHypothesisWithPose
 
 import os
 import csv
 import math
 import numpy as np
 from numpy import linalg as la
+import tf
 
 import rospkg
 import rospy
@@ -31,9 +32,22 @@ def find_angle(v1, v2):
 def parse_csv(filename):
     with open(filename) as f:
         data = [tuple(line) for line in csv.reader(f)]
+        data = list(map(lambda x: [float(y) for y in x],data))
 
     return data
 
+def compute_cte(curr_x, curr_y, curr_yaw):
+    dx = [front_x - x for x in self.waypoints[:, 0]]
+    dy = [front_y - y for y in self.waypoints[:, 1]]
+    target_index = int(np.argmin(np.hypot(dx, dy)))
+
+    front_axle_vec_rot_90 = np.array(
+        [[math.cos(curr_yaw - math.pi / 2.0)], [math.sin(curr_yaw - math.pi / 2.0)]]
+    )
+
+    vec_target_2_front = np.array([[dx[target_index]], [dy[target_index]]])
+
+    return np.dot(vec_target_2_front.T, front_axle_vec_rot_90)
 
 class MpcEvaluator(object):
     def __init__(self):
@@ -42,18 +56,16 @@ class MpcEvaluator(object):
 
         rospack = rospkg.RosPack()
         mpc_gazebo_dir = rospack.get_path("mpc_gazebo")
-
-        self.waypoints = self.parse_csv(
-            os.path.join(mpc_gazebo_dir, "/data/waypoints.csv")
+        self.waypoints = parse_csv(
+            os.path.join(mpc_gazebo_dir, "./data/waypoints.csv")
         )
-        self.obstacles = self.parse_csv(
-            os.path.join(mpc_gazebo_dir, "/data/obstacles.csv")
+        self.obstacles = parse_csv(
+            os.path.join(mpc_gazebo_dir, "./data/obstacles.csv")
         )
-        print(self.waypoints)
-        print(self.obstacles)
-
+        
+        self.broadcaster = tf.TransformBroadcaster()
         self.odometry_sub = rospy.Subscriber(
-            "/gem/odometry", Odometry, self.odom_cb, queue_size=1
+            "/gem/base_footprint/odom", Odometry, self.odom_cb, queue_size=1
         )
         self.path_pub = rospy.Publisher("/mpc/path", Path, queue_size=1)
         self.obstacles_pub = rospy.Publisher(
@@ -76,15 +88,23 @@ class MpcEvaluator(object):
             (msg.pose.pose.position.x, msg.pose.pose.position.y, yaw)
         )
 
+        # Broadcast latest world -> base_link tf to simulate localization stack
+        self.broadcaster.sendTransform((msg.pose.pose.position.x, msg.pose.pose.position.y, msg.pose.pose.position.z),
+          tf.transformations.quaternion_from_euler(0, 0, yaw),
+          rospy.Time.now(),
+          msg.child_frame_id,
+          msg.header.frame_id)
+
     def publish_path(self):
         msg = Path()
-        msg.header.stamp = rospy.time.now()
+        msg.header.stamp = rospy.Time.now()
+        msg.header.frame_id = WORLD_FRAME_ID
 
         for pt in self.waypoints:
             pose = PoseStamped()
             pose.pose.position.x = pt[0]
             pose.pose.position.y = pt[1]
-            q = quaternion_from_euler((0, 0, pt[2]))
+            q = quaternion_from_euler(0, 0, pt[2])
             pose.pose.orientation.x = q[0]
             pose.pose.orientation.y = q[1]
             pose.pose.orientation.z = q[2]
@@ -94,7 +114,8 @@ class MpcEvaluator(object):
 
     def publish_obstacles(self):
         msg = Detection3DArray()
-        msg.header.stamp = rospy.time.now()
+        msg.header.stamp = rospy.Time.now()
+        msg.header.frame_id = WORLD_FRAME_ID
 
         for idx, o in enumerate(self.obstacles):
             obstacle = ObjectHypothesisWithPose()
@@ -108,7 +129,6 @@ class MpcEvaluator(object):
         self.obstacles_pub.publish(msg)
 
         msg_viz = MarkerArray()
-        msg_viz.header.stamp = rospy.time.now()
         for idx, o in enumerate(self.obstacles):
             marker = Marker()
             marker.header.frame_id = WORLD_FRAME_ID
@@ -128,23 +148,13 @@ class MpcEvaluator(object):
             marker.color.a = 0.6
             marker.pose.position.x = o[0]
             marker.pose.position.y = o[1]
+            marker.pose.position.z = marker.scale.z*0.5
+
             msg_viz.markers.append(marker)
         self.obstacles_viz_pub.publish(msg_viz)
 
-    def compute_cte(self, curr_x, curr_y, curr_yaw):
-        dx = [front_x - x for x in self.waypoints[:, 0]]
-        dy = [front_y - y for y in self.waypoints[:, 1]]
-        target_index = int(np.argmin(np.hypot(dx, dy)))
 
-        front_axle_vec_rot_90 = np.array(
-            [[math.cos(curr_yaw - math.pi / 2.0)], [math.sin(curr_yaw - math.pi / 2.0)]]
-        )
-
-        vec_target_2_front = np.array([[dx[target_index]], [dy[target_index]]])
-
-        return np.dot(vec_target_2_front.T, front_axle_vec_rot_90)
-
-    # TODO: plot MPC results
+    # TODO: plot MPC results at the end of trial
     def plot(self):
         return
 

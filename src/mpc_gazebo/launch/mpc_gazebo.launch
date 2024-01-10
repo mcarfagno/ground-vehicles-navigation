@@ -9,8 +9,8 @@
   <arg name="headless" default="false"/>
   <arg name="debug" default="false"/>
   <arg name="verbose" default="false"/>
-  <!-- arg name="world_name" default="$(find gem_gazebo)/worlds/simple_track_green.world"/ -->
-  <arg name="use_rviz" default="false"/>
+  <arg name="world_name" default="$(find gem_gazebo)/worlds/simple_track_green.world"/>
+  <arg name="use_rviz" default="true"/>
 
   <!-- Launch Gazebo -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
@@ -20,6 +20,7 @@
     <arg name="headless" value="$(arg headless)"/>
     <arg name="debug" value="$(arg debug)"/>
     <arg name="verbose" value="$(arg verbose)"/>
+    <arg name="world_name" value="$(arg world_name)"/>
   </include> 
 
   <!-- Vehicle pose -->
@@ -39,7 +40,7 @@
     <param name="robot_description" 
            command="$(find xacro)/xacro '$(find mpc_gazebo)/urdf/gem.urdf.xacro' robotname:='$(arg robot_name)' "/>  
   
-    <!-- Robot name is Gazebo, currently is only "gem" -->
+    <!-- Robot name in Gazebo, currently is only "gem" -->
     <node name="spawn_model_$(arg robot_name)" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen"
           args="-param robot_description -model $(arg robot_name) -urdf $(arg init_pose)"/>
     
@@ -72,8 +73,7 @@
     
     <node name="gem_cmdvel_$(arg robot_name)" pkg="gem_gazebo" type="gem_cmdvel.py" />
     
-    <!--node if="$(arg use_rviz)" name="rviz_$(arg robot_name)" pkg="rviz" type="rviz" args="-d $(find gem_description)/config_rviz/gem_gazebo_rviz.rviz" /-->
-
+    <node if="$(arg use_rviz)" name="rviz_$(arg robot_name)" pkg="rviz" type="rviz" args="-d $(find mpc_gazebo)/config/gem_gazebo_rviz.rviz" />
       
   </group> 
    
