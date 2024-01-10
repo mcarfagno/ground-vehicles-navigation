@@ -11,6 +11,7 @@ import math
 import numpy as np
 from numpy import linalg as la
 
+import rospkg
 import rospy
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
@@ -27,14 +28,33 @@ def find_angle(v1, v2):
     return np.arctan2(sinang, cosang)
 
 
-class MpcLogger(object):
-    def __init__(self):
-        self.cte_log = []
-        self.rate = rospy.Rate(10)
-        self.waypoints = self.read_waypoints()
-        self.obstacles = self.read_obstacles()
+def parse_csv(filename):
+    with open(filename) as f:
+        data = [tuple(line) for line in csv.reader(f)]
 
-        self.odometry_sub = rospy.Subscriber("/gem/odometry", Odometry, queue_size=1)
+    return data
+
+
+class MpcEvaluator(object):
+    def __init__(self):
+        self.mpc_pos_log = []
+        self.rate = rospy.Rate(10)
+
+        rospack = rospkg.RosPack()
+        mpc_gazebo_dir = rospack.get_path("mpc_gazebo")
+
+        self.waypoints = self.parse_csv(
+            os.path.join(mpc_gazebo_dir, "/data/waypoints.csv")
+        )
+        self.obstacles = self.parse_csv(
+            os.path.join(mpc_gazebo_dir, "/data/obstacles.csv")
+        )
+        print(self.waypoints)
+        print(self.obstacles)
+
+        self.odometry_sub = rospy.Subscriber(
+            "/gem/odometry", Odometry, self.odom_cb, queue_size=1
+        )
         self.path_pub = rospy.Publisher("/mpc/path", Path, queue_size=1)
         self.obstacles_pub = rospy.Publisher(
             "/mpc/obstacles", Detection3DArray, queue_size=1
@@ -43,23 +63,18 @@ class MpcLogger(object):
             "/mpc/obstacles/markers", MarkerArray, queue_size=1
         )
 
-    def read_waypoints(self):
-        dirname = os.path.dirname(__file__)
-        filename = os.path.join(dirname, "../data/waypoints.csv")
-
-        with open(filename) as f:
-            points = [tuple(line) for line in csv.reader(f)]
-
-        return points
-
-    def read_obstacles(self):
-        dirname = os.path.dirname(__file__)
-        filename = os.path.join(dirname, "../data/obstacles.csv")
-
-        with open(filename) as f:
-            obs = [tuple(line) for line in csv.reader(f)]
-
-        return obs
+    def odom_cb(self, msg):
+        (_, _, yaw) = euler_from_quaternion(
+            [
+                msg.pose.pose.orientation.x,
+                msg.pose.pose.orientation.y,
+                msg.pose.pose.orientation.z,
+                msg.pose.pose.orientation.w,
+            ]
+        )
+        self.mpc_pos_log.append(
+            (msg.pose.pose.position.x, msg.pose.pose.position.y, yaw)
+        )
 
     def publish_path(self):
         msg = Path()
@@ -145,10 +160,10 @@ class MpcLogger(object):
 
 def mpc_sim():
     rospy.init_node("mpc_sim_node", anonymous=True)
-    mpc = MpcLogger()
+    mpc_eval = MpcEvaluator()
 
     try:
-        mpc.run()
+        mpc_eval.run()
     except rospy.ROSInterruptException:
         pass
 
