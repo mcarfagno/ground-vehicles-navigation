@@ -3,6 +3,7 @@
 
 #include "casadi/casadi.hpp"
 #include <chrono>
+#include <tf/transform_datatypes.h>
 #include <iostream>
 #include <memory>
 #include <nav_msgs/Odometry.h>

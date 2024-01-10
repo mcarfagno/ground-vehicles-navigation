@@ -22,6 +22,7 @@ find_package(catkin REQUIRED COMPONENTS
         geometry_msgs
         nav_msgs
         vision_msgs
+	tf
 )
 
 find_package(Eigen3 REQUIRED NO_MODULE)
