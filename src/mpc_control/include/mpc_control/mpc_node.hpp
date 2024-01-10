@@ -4,6 +4,7 @@
 #include "mpc_control/mpc.hpp"
 #include <memory>
 #include <nav_msgs/Odometry.h>
+#include <geometry_msgs/Point.h>
 #include <nav_msgs/Path.h>
 #include <optional>
 #include <ros/ros.h>
@@ -11,6 +12,9 @@
 #include <utility>
 #include <vector>
 #include <vision_msgs/Detection3DArray.h>
+#include <ackermann_msgs/AckermannDrive.h>
+#include <visualization_msgs/MarkerArray.h>
+#include <visualization_msgs/Marker.h>
 
 namespace mpc {
 class MpcNode {
@@ -23,16 +27,16 @@ private:
   ros::NodeHandle nh_;
   ros::NodeHandle private_nh_;
 
-  ros::Publisher ctrl_pub_;
-  ros::Publisher mpc_viz_pub_;
+  ros::Publisher cmd_pub_;
+  ros::Publisher viz_pub_;
 
   ros::Subscriber odom_sub_;
   ros::Subscriber path_sub_;
   ros::Subscriber obstacles_sub_;
 
   float rate_;
-  std::size_t mpc_horizon_steps_;
-  KinematicMpcCmd prev_cmd_;
+  int mpc_horizon_steps_;
+  MpcCmd prev_cmd_;
   std::optional<KinematicMpc> mpc_;
   std::optional<nav_msgs::Odometry> latest_odom_;
   std::optional<nav_msgs::Path> path_;

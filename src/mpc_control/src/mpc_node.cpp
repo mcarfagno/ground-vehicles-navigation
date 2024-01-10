@@ -12,23 +12,23 @@ MpcNode::MpcNode() : private_nh_("~") {
   prev_cmd_ = {0.0, 0.0};
 
   // params
-  private_nh_.param("rate", rate_, double(10.0));
+  private_nh_.param("rate", rate_, float(10.0));
   private_nh_.param("control_horizon_len", mpc_horizon_steps_, std::size_t(10));
 
   // publishers
-  ctrl_pub_ =
-      nh_.advertise<ackerman_msg::AckermannDrive>("/gem/ackermann_cmd", 10);
-  mpc_viz_pub_ = nh_.advertise<visualization_msg::VisualizationMarkerArray>(
+  cmd_pub_ =
+      nh_.advertise<ackermann_msgs::AckermannDrive>("/gem/ackermann_cmd", 10);
+  viz_pub_ = nh_.advertise<visualization_msgs::MarkerArray>(
       "/mpc/markers", 10);
 
   // subscribers
   odom_sub_ = nh_.subscribe(
-      "/gem/base_footprint/odom",
+      "/gem/base_footprint/odom",1,
       [&](const nav_msgs::OdometryPtr &msg) { latest_odom_ = *msg; });
   path_sub_ = nh_.subscribe(
-      "/mpc/path", [&](const nav_msgs::PathPtr &msg) { path_ = *msg; });
+      "/mpc/path",1, [&](const nav_msgs::PathPtr &msg) { path_ = *msg; });
   obstacles_sub_ = nh_.subscribe(
-      "/mpc/obstacles",
+      "/mpc/obstacles",1,
       [&](const vision_msgs::Detection3DArrayPtr &msg) { obstacles_ = *msg; });
 }
 
@@ -49,8 +49,8 @@ void MpcNode::run() {
     // create mpc instance
     if (!mpc_.has_value()) {
       ROS_INFO("Creating CasADi problem instance");
-      model = KinematicModel();
-      params = MpcParameters();
+      auto model = KinematicModel();
+      auto params = MpcParameters();
       params.DT = rate_;
       params.N = mpc_horizon_steps_;
 
@@ -58,18 +58,18 @@ void MpcNode::run() {
       // this is mostly due to having pre-fixed sizes for the obstacles
       // if the number of obstacles changes the problem must be rebuilt
       mpc_ = KinematicMpc(model, params, path_to_casadi(path_.value()),
-                          obstacles_to_casadi(obstacles));
+                          obstacles_to_casadi(obstacles_.value()));
     }
 
     // control loop
     auto mpc_dict_in = casadi::DMDict();
-    mpc_dict_in[INITIAL_STATE_DICT_KEY] = odom_to_casadi(latest_odom_.value());
+    mpc_dict_in[INITIAL_STATE_DICT_KEY] = odometry_to_casadi(latest_odom_.value());
     mpc_dict_in[INITIAL_CONTROL_DICT_KEY] = cmd_to_casadi(prev_cmd_);
 
     auto result = mpc_->solve(mpc_dict_in);
     if (result.has_value()) {
       auto ctrl =
-          mpc_->casadi_to_cmd(result.value()[OPTIMIZED_CONTROL_DICT_KEY]);
+          casadi_to_cmd(result.value()[OPTIMIZED_CONTROL_DICT_KEY]);
       publish_mpc_cmd(latest_state_.value().speed +
                           ctrl.acceleration * control_time_step_,
                       ctrl.steer);
@@ -79,15 +79,16 @@ void MpcNode::run() {
       publish_mpc_cmd(0.0, 0.0);
       prev_cmd_ = {0.0, 0.0};
     }
+
+      loop_rate.sleep();
   }
 }
 
 void MpcNode::publish_mpc_cmd(double speed, double steer) {
   auto cmd_msg = ackermann_msgs::AckermannDrive();
-  cmd_msg->header.stamp = this->get_clock()->now();
-  cmd_msg->speed = speed;
-  cmd_msg->steering_angle = steer;
-  command_pub_.publish(cmd_msg);
+  cmd_msg.speed = speed;
+  cmd_msg.steering_angle = steer;
+  cmd_pub_.publish(cmd_msg);
 }
 
 void MpcNode::publish_rviz_markers(const casadi::DM &predicted_state_traj) {
@@ -96,11 +97,11 @@ void MpcNode::publish_rviz_markers(const casadi::DM &predicted_state_traj) {
   // 1- publish optimized state x and y
   visualization_msgs::Marker marker;
   marker.header.frame_id = "world";
-  marker.header.stamp = this->get_clock()->now();
+  marker.header.stamp = ros::Time::now();
   marker.ns = "mpc_path_marker";
   marker.id = 0;
-  marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
-  marker.action = visualization_msgs::msg::Marker::ADD;
+  marker.type = visualization_msgs::Marker::LINE_STRIP;
+  marker.action = visualization_msgs::Marker::ADD;
   marker.scale.x = 0.2;
   marker.color.r = 1.0;
   marker.color.g = 0.0;
@@ -110,7 +111,7 @@ void MpcNode::publish_rviz_markers(const casadi::DM &predicted_state_traj) {
 
   for (std::size_t i = 0;
        i < static_cast<std::size_t>(predicted_state_traj.size1()); i++) {
-    geometry_msgs::msg::Point point;
+    geometry_msgs::Point point;
     point.x = predicted_state_traj(i, 0).scalar();
     point.y = predicted_state_traj(i, 1).scalar();
     marker.points.push_back(point);
@@ -131,7 +132,7 @@ casadi::DM MpcNode::cmd_to_casadi(const MpcCmd &cmd) const {
 }
 
 casadi::DM MpcNode::path_to_casadi(const nav_msgs::Path &path) const {
-  auto tmp = casadi::DM(path.poses.size(), nx_);
+  auto tmp = casadi::DM(path.poses.size(), 4);
   for (std::size_t i = 0; i < path.poses.size(); i++) {
     tmp(i, casadi::Slice()) = {
         path.poses[i].pose.position.x, path.poses[i].pose.position.y,
@@ -151,7 +152,7 @@ MpcNode::obstacles_to_casadi(const vision_msgs::Detection3DArray &obs) const {
   return tmp;
 }
 
-MpcCmd casadi_to_cmd(casadi::DM &in) const {
+MpcCmd MpcNode::casadi_to_cmd(casadi::DM &in) const {
   return MpcCmd(in(0, 0).scalar(), in(0, 1).scalar());
 }
 

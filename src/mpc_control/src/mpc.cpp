@@ -4,11 +4,11 @@
 namespace mpc {
 
 KinematicMpc::KinematicMpc(const KinematicModel &m, const MpcParameters &p,
-                           const casadi::DM trajectory,
-                           const casadi::DM obstacles) {
+                           const casadi::DM& trajectory,
+                           const casadi::DM& obstacles) {
 
   // save for later
-  trajectory_ trajectory;
+  trajectory_ =trajectory;
   obstacles_ = obstacles;
 
   // problem size variables
