@@ -74,6 +74,9 @@ private:
   // Problem placeholder obj
   casadi::Opti opti_;
 
+  casadi::DM trajectory_;
+  casadi::DM obstacles_;
+
   casadi::DM state_error_cost_;
   casadi::DM control_input_cost_;
 
@@ -94,7 +97,9 @@ private:
                                      const casadi::DM &x) const;
 
 public:
-  explicit KinematicMpc(const KinematicModel &k, const MpcParameters &p);
+  explicit KinematicMpc(const KinematicModel &k, const MpcParameters &p,
+                        const casadi::DM &trajectory,
+                        const casadi::DM &obstacles);
   ~KinematicMpc() {}
 
   std::optional<casadi::DMDict> solve(const casadi::DMDict &in);

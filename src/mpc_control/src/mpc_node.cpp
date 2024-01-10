@@ -38,7 +38,7 @@ void MpcNode::run() {
   while (ros::ok()) {
     ros::spinOnce();
 
-    // check for topics and create mpc instance
+    // check for topics
     if (!obstacles_.has_value() || !path_.has_value() ||
         !latest_odom_.has_value()) {
       ROS_WARN("MPC waiting for necessary topics.");
@@ -46,20 +46,25 @@ void MpcNode::run() {
       continue;
     }
 
+    // create mpc instance
     if (!mpc_.has_value()) {
       ROS_INFO("Creating CasADi problem instance");
       model = KinematicModel();
       params = MpcParameters();
       params.DT = rate_;
       params.N = mpc_horizon_steps_;
-      mpc_ = KinematicMpc(model, params);
+
+      // NOTE: I am assuming path and obstacles not changing
+      // this is mostly due to having pre-fixed sizes for the obstacles
+      // if the number of obstacles changes the problem must be rebuilt
+      mpc_ = KinematicMpc(model, params, path_to_casadi(path_.value()),
+                          obstacles_to_casadi(obstacles));
     }
 
     // control loop
     auto mpc_dict_in = casadi::DMDict();
     mpc_dict_in[INITIAL_STATE_DICT_KEY] = odom_to_casadi(latest_odom_.value());
     mpc_dict_in[INITIAL_CONTROL_DICT_KEY] = cmd_to_casadi(prev_cmd_);
-    mpc_dict_in[TRAJECTORY_DICT_KEY] = (mpc_dict_in, path_.value());
 
     auto result = mpc_->solve(mpc_dict_in);
     if (result.has_value()) {
@@ -86,10 +91,10 @@ void MpcNode::publish_mpc_cmd(double speed, double steer) {
 }
 
 void MpcNode::publish_rviz_markers(const casadi::DM &predicted_state_traj) {
-  auto marker_arr = visualization_msgs::MarkerArray > ();
+  visualization_msgs::MarkerArray marker_arr;
 
   // 1- publish optimized state x and y
-  visualization_msgs::msg::Marker marker;
+  visualization_msgs::Marker marker;
   marker.header.frame_id = "world";
   marker.header.stamp = this->get_clock()->now();
   marker.ns = "mpc_path_marker";
@@ -110,8 +115,8 @@ void MpcNode::publish_rviz_markers(const casadi::DM &predicted_state_traj) {
     point.y = predicted_state_traj(i, 1).scalar();
     marker.points.push_back(point);
   }
-  marker_arr->markers.push_back(marker);
-  viz_pub_->publish(std::move(marker_arr));
+  marker_arr.markers.push_back(marker);
+  viz_pub_.publish(std::move(marker_arr));
 }
 
 casadi::DM MpcNode::odometry_to_casadi(const nav_msgs::Odometry &odom) const {

@@ -3,7 +3,13 @@
 
 namespace mpc {
 
-KinematicMpc::KinematicMpc(const KinematicModel &m, const MpcParameters &p) {
+KinematicMpc::KinematicMpc(const KinematicModel &m, const MpcParameters &p,
+                           const casadi::DM trajectory,
+                           const casadi::DM obstacles) {
+
+  // save for later
+  trajectory_ trajectory;
+  obstacles_ = obstacles;
 
   // problem size variables
   N_ = p.N;   // horizon
@@ -126,12 +132,11 @@ KinematicMpc::KinematicMpc(const KinematicModel &m, const MpcParameters &p) {
 }
 
 std::optional<casadi::DMDict> KinematicMpc::solve(const casadi::DMDict &in) {
-  // TODO: get obstacles
+
   const auto &state_initial_condition = in.at(INITIAL_STATE_DICT_KEY);
-  const auto &trajectory = in.at(TRAJECTORY_DICT_KEY);
   const auto &control_initial_condition = in.at(INITIAL_CONTROL_DICT_KEY);
-  auto trajectory_reinterp =
-      reinterpolate_reference(trajectory, state_initial_condition);
+  const auto trajectory_reinterp =
+      reinterpolate_reference(trajectory_, state_initial_condition);
 
   // set problem parameters
   opti_.set_value(trajectory_initial_conditions_, state_initial_condition);
