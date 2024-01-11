@@ -77,7 +77,7 @@
 
   <!-- Run the MPC evaluator script -->
   <!-- This publishes the waypoints and other topics needed for the MPC -->
-  <node name="mpc_evaluator_$(arg robot_name)" pkg="mpc_gazebo" type="mpc_evaluator.py" />
+  <node name="mpc_evaluator_$(arg robot_name)" pkg="mpc_gazebo" type="mpc_evaluator.py" respawn="false" output="screen"/>
    
 </launch>
 
