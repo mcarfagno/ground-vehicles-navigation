@@ -100,10 +100,10 @@ KinematicMpc::KinematicMpc(const KinematicModel &m, const MpcParameters &p,
     for (casadi_int j = 0; j < obstacles.size1(); j++) {
       // collision dist
       auto d = pow((x_dv(i) - obstacles(j, 0)) /
-                       (m.vehicle_width + p.obstacle_avoidance_dist),
+                       (m.vehicle_width + obstacles(j,2)),
                    2) +
                pow((y_dv(i) - obstacles(j, 1)) /
-                       (m.vehicle_width + p.obstacle_avoidance_dist),
+                       (m.vehicle_width + obstacles(j,2)),
                    2);
       // min collision dist
       opti_.subject_to(d > 0);

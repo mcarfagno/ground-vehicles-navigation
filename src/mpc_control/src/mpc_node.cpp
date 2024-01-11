@@ -149,11 +149,13 @@ casadi::DM MpcNode::path_to_casadi(const nav_msgs::Path &path) const {
 
 casadi::DM
 MpcNode::obstacles_to_casadi(const vision_msgs::Detection3DArray &obs) const {
-  auto tmp = casadi::DM(obs.detections.size(), 2);
+  auto tmp = casadi::DM(obs.detections.size(), 3);
   for (std::size_t i = 0; i < obs.detections.size(); i++) {
     tmp(i, casadi::Slice()) = {
-        obs.detections[i].results.front().pose.pose.position.x,
-        obs.detections[i].results.front().pose.pose.position.y};
+        obs.detections[i].bbox.center.position.x,
+        obs.detections[i].bbox.center.position.y,
+	obs.detections[i].bbox.size.x
+    };
   }
   return tmp;
 }

@@ -118,14 +118,12 @@ class MpcEvaluator(object):
         msg.header.frame_id = WORLD_FRAME_ID
 
         for idx, o in enumerate(self.obstacles):
-            obstacle = ObjectHypothesisWithPose()
-            obstacle.id = idx
-            obstacle.pose.pose.position.x = o[0]
-            obstacle.pose.pose.position.y = o[1]
-
             d = Detection3D()
-            d.results.append(obstacle)
+            d.bbox.center.position.x = o[0]
+            d.bbox.center.position.y = o[1]
+            d.bbox.size.x = o[2]
             msg.detections.append(d)
+
         self.obstacles_pub.publish(msg)
 
         msg_viz = MarkerArray()
@@ -138,8 +136,8 @@ class MpcEvaluator(object):
             marker.action = 0
             marker.id = idx
             marker.ns = "mpc/obs"
-            marker.scale.x = OBS_RADIUS*2
-            marker.scale.y = OBS_RADIUS*2
+            marker.scale.x = o[2]*2
+            marker.scale.y = o[2]*2
             marker.scale.z = 2.0
 
             marker.color.r = 0.0
