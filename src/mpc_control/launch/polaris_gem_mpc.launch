@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- TODO: add weights -->
+  <arg name="control_horizon" default="20"/>
+
+  <node name="mpc_node" pkg="mpc_control" type="mpc" respawn="false" output="screen"
+          args="-param control_horizon_len -model $(arg control_horizon)"/>
+	  
+</launch>
