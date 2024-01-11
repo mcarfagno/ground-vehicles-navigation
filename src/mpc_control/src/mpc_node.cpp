@@ -18,18 +18,20 @@ MpcNode::MpcNode() : private_nh_("~") {
   // publishers
   cmd_pub_ =
       nh_.advertise<ackermann_msgs::AckermannDrive>("/gem/ackermann_cmd", 10);
-  viz_pub_ = nh_.advertise<visualization_msgs::MarkerArray>(
-      "/mpc/markers", 10);
+  viz_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("/mpc/markers", 10);
 
   // subscribers
   odom_sub_ = nh_.subscribe<nav_msgs::Odometry>(
-      "/gem/base_footprint/odom",1,
+      "/gem/base_footprint/odom", 1,
       [this](const nav_msgs::OdometryConstPtr &msg) { latest_odom_ = *msg; });
   path_sub_ = nh_.subscribe<nav_msgs::Path>(
-      "/mpc/path",1, [this](const nav_msgs::PathConstPtr &msg) { path_ = *msg; });
+      "/mpc/path", 1,
+      [this](const nav_msgs::PathConstPtr &msg) { path_ = *msg; });
   obstacles_sub_ = nh_.subscribe<vision_msgs::Detection3DArray>(
-      "/mpc/obstacles",1,
-      [this](const vision_msgs::Detection3DArrayConstPtr &msg) { obstacles_ = *msg; });
+      "/mpc/obstacles", 1,
+      [this](const vision_msgs::Detection3DArrayConstPtr &msg) {
+        obstacles_ = *msg;
+      });
 }
 
 void MpcNode::run() {
@@ -63,16 +65,17 @@ void MpcNode::run() {
 
     // control loop
     auto mpc_dict_in = casadi::DMDict();
-    mpc_dict_in[INITIAL_STATE_DICT_KEY] = odometry_to_casadi(latest_odom_.value());
+    mpc_dict_in[INITIAL_STATE_DICT_KEY] =
+        odometry_to_casadi(latest_odom_.value());
     mpc_dict_in[INITIAL_CONTROL_DICT_KEY] = cmd_to_casadi(prev_cmd_);
 
     auto result = mpc_->solve(mpc_dict_in);
     if (result.has_value()) {
-      auto ctrl =
-          casadi_to_cmd(result.value()[OPTIMIZED_CONTROL_DICT_KEY]);
-      publish_mpc_cmd(latest_state_.value().speed +
-                          ctrl.acceleration * control_time_step_,
-                      ctrl.steer);
+      auto ctrl = casadi_to_cmd(result.value()[OPTIMIZED_CONTROL_DICT_KEY]);
+      auto speed = std::hypot(latest_odom_.value().twist.twist.linear.x,
+                              latest_odom_.value().twist.twist.linear.y) +
+                   ctrl.acceleration * 1 / rate_;
+      publish_mpc_cmd(speed, ctrl.steer);
       publish_rviz_markers(result.value()[OPTIMIZED_TRAJECTORY_DICT_KEY]);
       prev_cmd_ = ctrl;
     } else {
@@ -80,7 +83,7 @@ void MpcNode::run() {
       prev_cmd_ = {0.0, 0.0};
     }
 
-      loop_rate.sleep();
+    loop_rate.sleep();
   }
 }
 
