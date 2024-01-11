@@ -13,7 +13,7 @@ MpcNode::MpcNode() : private_nh_("~") {
 
   // params
   private_nh_.param("rate", rate_, float(10.0));
-  private_nh_.param("control_horizon_len", mpc_horizon_steps_, std::size_t(10));
+  private_nh_.param("control_horizon_len", mpc_horizon_steps_, int(10));
 
   // publishers
   cmd_pub_ =
@@ -22,14 +22,14 @@ MpcNode::MpcNode() : private_nh_("~") {
       "/mpc/markers", 10);
 
   // subscribers
-  odom_sub_ = nh_.subscribe(
+  odom_sub_ = nh_.subscribe<nav_msgs::Odometry>(
       "/gem/base_footprint/odom",1,
-      [&](const nav_msgs::OdometryPtr &msg) { latest_odom_ = *msg; });
-  path_sub_ = nh_.subscribe(
-      "/mpc/path",1, [&](const nav_msgs::PathPtr &msg) { path_ = *msg; });
-  obstacles_sub_ = nh_.subscribe(
+      [this](const nav_msgs::OdometryConstPtr &msg) { latest_odom_ = *msg; });
+  path_sub_ = nh_.subscribe<nav_msgs::Path>(
+      "/mpc/path",1, [this](const nav_msgs::PathConstPtr &msg) { path_ = *msg; });
+  obstacles_sub_ = nh_.subscribe<vision_msgs::Detection3DArray>(
       "/mpc/obstacles",1,
-      [&](const vision_msgs::Detection3DArrayPtr &msg) { obstacles_ = *msg; });
+      [this](const vision_msgs::Detection3DArrayConstPtr &msg) { obstacles_ = *msg; });
 }
 
 void MpcNode::run() {
