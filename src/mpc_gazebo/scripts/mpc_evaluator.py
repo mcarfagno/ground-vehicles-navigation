@@ -17,7 +17,7 @@ import rospy
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 WORLD_FRAME_ID = "world"
-
+OBS_RADIUS = 0.5
 
 def dist(p1, p2):
     return round(np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2), 3)
@@ -138,8 +138,8 @@ class MpcEvaluator(object):
             marker.action = 0
             marker.id = idx
             marker.ns = "mpc/obs"
-            marker.scale.x = 0.5
-            marker.scale.y = 0.5
+            marker.scale.x = OBS_RADIUS*2
+            marker.scale.y = OBS_RADIUS*2
             marker.scale.z = 2.0
 
             marker.color.r = 0.0
