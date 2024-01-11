@@ -80,7 +80,6 @@ KinematicMpc::KinematicMpc(const KinematicModel &m, const MpcParameters &p,
 
   // slack cost
   cost += (sum1(sl_steer_dv) + sum1(sl_acc_dv));
-  opti_.minimize(cost);
 
   // state bound constraints
   opti_.subject_to(opti_.bounded(m.v_min, v_dv, m.v_max));
@@ -98,18 +97,27 @@ KinematicMpc::KinematicMpc(const KinematicModel &m, const MpcParameters &p,
   // obstacle avoidance
   for (std::size_t i = 0; i < N_; i++) {
     for (casadi_int j = 0; j < obstacles.size1(); j++) {
-      // collision dist
-      auto d = pow((x_dv(i) - obstacles(j, 0)) /
-                       (m.vehicle_width + obstacles(j,2)),
-                   2) +
-               pow((y_dv(i) - obstacles(j, 1)) /
-                       (m.vehicle_width + obstacles(j,2)),
-                   2);
-      // min collision dist
-      opti_.subject_to(d > 0);
+      auto x_rear = x_dv(i);
+      auto y_rear = y_dv(i);
 
-      // object proximity cost
-      cost += exp(p.obstacle_avoidance_weight * exp(-d));
+      // auto x_front=x_dv(i)+m.wheel_base*cos(psi_dv(i));
+      // auto y_front=y_dv(i)+m.wheel_base*sin(psi_dv(i));
+
+      // collision dist from front and rear axle
+      auto d_rear =
+          pow(x_rear - obstacles(j, 0), 2) + pow(y_rear - obstacles(j, 1), 2);
+      // auto d_front = pow(x_front - obstacles(j, 0),2) +
+      //         pow(y_front - obstacles(j, 1),
+      //             2);
+
+      // min collision dist
+      // opti_.subject_to(d_front > obstacles(j, 2) +m.vehicle_width
+      // +p.min_safety_dist);
+      opti_.subject_to(d_rear >
+                       obstacles(j, 2) + m.vehicle_width + p.min_safety_dist);
+
+      // obstacle proximity cost
+      cost += exp(p.obstacle_avoidance_weight * exp(-d_rear));
     }
   }
   // input rate of change
@@ -143,6 +151,8 @@ KinematicMpc::KinematicMpc(const KinematicModel &m, const MpcParameters &p,
                    {"tol", p.tol},
                    {"print_level", p.verbose ? 5 : 0},
                    {"max_iter", static_cast<casadi_int>(p.max_iter)}};
+
+  opti_.minimize(cost);
   opti_.solver("ipopt", p_opts, s_opts);
 }
 
