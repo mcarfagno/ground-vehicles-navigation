@@ -32,7 +32,7 @@ Panels:
       Expanded:
         - /Global Options1
       Splitter Ratio: 0.5
-    Tree Height: 727
+    Tree Height: 371
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -564,7 +564,7 @@ Visualization Manager:
       Marker Topic: /mpc/markers
       Name: MarkerArray
       Namespaces:
-        mpc_path_marker: true
+        {}
       Queue Size: 100
       Value: true
   Enabled: true
@@ -603,17 +603,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -0.25931107997894287
-        Y: -1.049986720085144
+        X: 0.13377368450164795
+        Y: 0.26210057735443115
         Z: 0
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.4997963905334473
+      Pitch: 1.5697963237762451
       Target Frame: <Fixed Frame>
-      Yaw: 3.1480305194854736
+      Yaw: 3.133028984069824
     Saved: ~
 Window Geometry:
   Displays:
