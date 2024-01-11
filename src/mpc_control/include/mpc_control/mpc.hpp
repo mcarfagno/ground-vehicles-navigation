@@ -47,8 +47,8 @@ struct MpcParameters {
   // Mpc problem settings
   std::size_t N = 10;
   double DT = 0.2;                      // [s]
-  double min_safety_dist = 0.25;        // [m]
-  double obstacle_avoidance_weight = 100.0;
+  double min_safety_dist = 0.0;         // [m]
+  double obstacle_avoidance_weight = 10.0;
   std::vector<double> state_error_weights = {1.0, 1.0, 1.0, 0.1};
   std::vector<double> control_rate_weights = {10.0, 100.0};
 
