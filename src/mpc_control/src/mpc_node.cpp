@@ -53,7 +53,7 @@ void MpcNode::run() {
       ROS_INFO("Creating CasADi problem instance");
       auto model = KinematicModel();
       auto params = MpcParameters();
-      params.DT = rate_;
+      params.DT = 1./rate_;
       params.N = mpc_horizon_steps_;
 
       // NOTE: I am assuming path and obstacles not changing
@@ -74,7 +74,7 @@ void MpcNode::run() {
       auto ctrl = casadi_to_cmd(result.value()[OPTIMIZED_CONTROL_DICT_KEY]);
       auto speed = std::hypot(latest_odom_.value().twist.twist.linear.x,
                               latest_odom_.value().twist.twist.linear.y) +
-                   ctrl.acceleration * 1 / rate_;
+                   ctrl.acceleration * 1. / rate_;
       publish_mpc_cmd(speed, ctrl.steer);
       publish_rviz_markers(result.value()[OPTIMIZED_TRAJECTORY_DICT_KEY]);
       prev_cmd_ = ctrl;

@@ -9,7 +9,7 @@
 
 namespace mpc {
 
-static const double MPC_REF_SPEED = 5.55; // [m/s] -> 20km/h
+static const double MPC_REF_SPEED = 20/3.6; // [m/s] -> 20km/h
 static const char OBSTACLES_DICT_KEY[] = "obstacles";
 static const char TRAJECTORY_DICT_KEY[] = "ref_trajectory";
 static const char INITIAL_STATE_DICT_KEY[] = "x_initial_condition";
@@ -25,7 +25,7 @@ struct KinematicModel {
   double v_min = 0.0;           // [m/s]
   double v_max = 10.0;          // [m/s]
   double a_min = -3.0;          // [m/ss]
-  double a_max = 2.0;           // [m/ss]
+  double a_max = 3.0;           // [m/ss]
   double jerk_min = -1.5;       // [m/sss]
   double jerk_max = 1.5;        // [m/sss]
   double steer_min = -0.61;     // [rad]
