@@ -9,7 +9,7 @@
 
 namespace mpc {
 
-static const double MPC_REF_SPEED = 20/3.6; // [m/s] -> 20km/h
+static const double MPC_REF_SPEED = 20 / 3.6; // [m/s] -> 20km/h
 static const char OBSTACLES_DICT_KEY[] = "obstacles";
 static const char TRAJECTORY_DICT_KEY[] = "ref_trajectory";
 static const char INITIAL_STATE_DICT_KEY[] = "x_initial_condition";
@@ -22,6 +22,7 @@ static const char OPTIMIZED_TRAJECTORY_DICT_KEY[] = "x_optimized";
 struct KinematicModel {
   // Vehicle Kin constrains
   double wheel_base = 1.75;     // [m]
+  double vehicle_width = 0.6;   // [m]
   double v_min = 0.0;           // [m/s]
   double v_max = 10.0;          // [m/s]
   double a_min = -3.0;          // [m/ss]
@@ -47,6 +48,7 @@ struct MpcParameters {
   std::size_t N = 10;
   double DT = 0.2;                      // [s]
   double obstacle_avoidance_dist = 0.5; // [m]
+  double obstacle_avoidance_weight = 1.0;
   std::vector<double> state_error_weights = {1.0, 1.0, 1.0, 0.1};
   std::vector<double> control_rate_weights = {10.0, 100.0};
 
@@ -94,7 +96,7 @@ private:
    * size and starting point
    * */
   casadi::DM reinterpolate_reference_trajectory(const casadi::DM &traj,
-                                     const casadi::DM &x) const;
+                                                const casadi::DM &x) const;
 
 public:
   explicit KinematicMpc(const KinematicModel &k, const MpcParameters &p,

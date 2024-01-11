@@ -4,11 +4,11 @@
 namespace mpc {
 
 KinematicMpc::KinematicMpc(const KinematicModel &m, const MpcParameters &p,
-                           const casadi::DM& trajectory,
-                           const casadi::DM& obstacles) {
+                           const casadi::DM &trajectory,
+                           const casadi::DM &obstacles) {
 
   // save for later
-  trajectory_ =trajectory;
+  trajectory_ = trajectory;
   obstacles_ = obstacles;
 
   // problem size variables
@@ -95,8 +95,23 @@ KinematicMpc::KinematicMpc(const KinematicModel &m, const MpcParameters &p,
   opti_.subject_to(psi_dv(0) == trajectory_initial_conditions_(2));
   opti_.subject_to(v_dv(0) == trajectory_initial_conditions_(3));
 
-  // TODO: obstacle avoidance
+  // obstacle avoidance
+  for (std::size_t i = 0; i < N_; i++) {
+    for (casadi_int j = 0; j < obstacles.size1(); j++) {
+      // collision dist
+      auto d = pow((x_dv(i) - obstacles(j, 0)) /
+                       (m.vehicle_width + p.obstacle_avoidance_dist),
+                   2) +
+               pow((y_dv(i) - obstacles(j, 1)) /
+                       (m.vehicle_width + p.obstacle_avoidance_dist),
+                   2);
+      // min collision dist
+      opti_.subject_to(d > 0);
 
+      // object proximity cost
+      cost += exp(p.obstacle_avoidance_weight * exp(-d));
+    }
+  }
   // input rate of change
   opti_.subject_to(opti_.bounded(m.jerk_min * dt_ - sl_acc_dv(0),
                                  acc_dv(0) - optimal_control_prev_(0),
@@ -158,7 +173,8 @@ std::optional<casadi::DMDict> KinematicMpc::solve(const casadi::DMDict &in) {
   }
 }
 
-casadi::DM KinematicMpc::reinterpolate_reference_trajectory(const casadi::DM &traj,
+casadi::DM
+KinematicMpc::reinterpolate_reference_trajectory(const casadi::DM &traj,
                                                  const casadi::DM &x) const {
   using casadi::DM;
   using casadi::Slice;
