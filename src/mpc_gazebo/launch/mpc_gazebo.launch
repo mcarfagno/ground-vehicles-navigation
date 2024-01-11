@@ -24,7 +24,7 @@
   </include> 
 
   <!-- Vehicle pose -->
-  <arg name="x" default="0"/>
+  <arg name="x" default="0.5"/>
   <arg name="y" default="0"/>
   <arg name="z" default="0.05"/>
   <arg name="yaw" default="0.0"/>
@@ -71,11 +71,13 @@
       <rosparam file="$(find gem_gazebo)/config/gem_ackermann_control_params.yaml" command="load"/>
     </node>
     
-    <node name="gem_cmdvel_$(arg robot_name)" pkg="gem_gazebo" type="gem_cmdvel.py" />
-    
-    <node if="$(arg use_rviz)" name="rviz_$(arg robot_name)" pkg="rviz" type="rviz" args="-d $(find mpc_gazebo)/config/gem_gazebo_rviz.rviz" />
+    <node if="$(arg use_rviz)" name="rviz_$(arg robot_name)" pkg="rviz" type="rviz" args="-d $(find mpc_gazebo)/config/mpc_gazebo_rviz.rviz" />
       
   </group> 
+
+  <!-- Run the MPC evaluator script -->
+  <!-- This publishes the waypoints and other topics needed for the MPC -->
+  <node name="mpc_evaluator_$(arg robot_name)" pkg="mpc_gazebo" type="mpc_evaluator.py" />
    
 </launch>
 

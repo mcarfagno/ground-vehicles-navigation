@@ -93,7 +93,7 @@ private:
    * @brief reinterpolates a trajectory to one of the correct
    * size and starting point
    * */
-  casadi::DM reinterpolate_reference(const casadi::DM &traj,
+  casadi::DM reinterpolate_reference_trajectory(const casadi::DM &traj,
                                      const casadi::DM &x) const;
 
 public:

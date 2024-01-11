@@ -31,7 +31,6 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /TF1/Status1
       Splitter Ratio: 0.5
     Tree Height: 727
 Preferences:
@@ -45,7 +44,7 @@ Visualization Manager:
       Cell Size: 1
       Class: rviz/Grid
       Color: 160; 160; 164
-      Enabled: true
+      Enabled: false
       Line Style:
         Line Width: 0.029999999329447746
         Value: Lines
@@ -58,7 +57,7 @@ Visualization Manager:
       Plane: XY
       Plane Cell Count: 10
       Reference Frame: <Fixed Frame>
-      Value: true
+      Value: false
     - Alpha: 1
       Class: rviz/RobotModel
       Collision Enabled: false
@@ -365,6 +364,8 @@ Visualization Manager:
           Value: false
         top_rack_link:
           Value: false
+        world:
+          Value: true
       Marker Alpha: 1
       Marker Scale: 0.5
       Name: TF
@@ -372,74 +373,75 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        base_footprint:
-          base_link:
-            center_link:
-              GPS_link:
-                {}
-              IMU_link:
-                {}
-              chair_link:
-                {}
-              door_link:
-                {}
-              front_left_emergency_button_link:
-                {}
-              front_left_head_light_link:
-                {}
-              front_left_turn_light_link:
-                {}
-              front_rack_link:
-                {}
-              front_right_emergency_button_link:
-                {}
-              front_right_head_light_link:
-                {}
-              front_right_turn_light_link:
-                {}
-              front_single_camera_link:
-                {}
-              left_I_link:
-                {}
-              left_antenna_link:
-                {}
-              left_blue_outer_link:
-                {}
-              left_steering_hinge_link:
-                front_left_wheel_link:
+        world:
+          base_footprint:
+            base_link:
+              center_link:
+                GPS_link:
                   {}
-              rear_left_emergency_button_link:
-                {}
-              rear_left_light_link:
-                {}
-              rear_left_stop_light_link:
-                {}
-              rear_left_wheel_link:
-                {}
-              rear_light_bar_link:
-                {}
-              rear_rack_link:
-                rear_sonar_link:
+                IMU_link:
                   {}
-              rear_right_emergency_button_link:
-                {}
-              rear_right_light_link:
-                {}
-              rear_right_stop_light_link:
-                {}
-              rear_right_wheel_link:
-                {}
-              right_I_link:
-                {}
-              right_antenna_link:
-                {}
-              right_blue_outer_link:
-                {}
-              right_steering_hinge_link:
-                front_right_wheel_link:
+                chair_link:
                   {}
-              top_rack_link:
-                {}
+                door_link:
+                  {}
+                front_left_emergency_button_link:
+                  {}
+                front_left_head_light_link:
+                  {}
+                front_left_turn_light_link:
+                  {}
+                front_rack_link:
+                  {}
+                front_right_emergency_button_link:
+                  {}
+                front_right_head_light_link:
+                  {}
+                front_right_turn_light_link:
+                  {}
+                front_single_camera_link:
+                  {}
+                left_I_link:
+                  {}
+                left_antenna_link:
+                  {}
+                left_blue_outer_link:
+                  {}
+                left_steering_hinge_link:
+                  front_left_wheel_link:
+                    {}
+                rear_left_emergency_button_link:
+                  {}
+                rear_left_light_link:
+                  {}
+                rear_left_stop_light_link:
+                  {}
+                rear_left_wheel_link:
+                  {}
+                rear_light_bar_link:
+                  {}
+                rear_rack_link:
+                  rear_sonar_link:
+                    {}
+                rear_right_emergency_button_link:
+                  {}
+                rear_right_light_link:
+                  {}
+                rear_right_stop_light_link:
+                  {}
+                rear_right_wheel_link:
+                  {}
+                right_I_link:
+                  {}
+                right_antenna_link:
+                  {}
+                right_blue_outer_link:
+                  {}
+                right_steering_hinge_link:
+                  front_right_wheel_link:
+                    {}
+                top_rack_link:
+                  {}
       Update Interval: 0
       Value: true
     - Alpha: 0.5
@@ -530,7 +532,7 @@ Visualization Manager:
       Marker Topic: /mpc/obstacles/markers
       Name: MarkerArray
       Namespaces:
-        {}
+        mpc/obs: true
       Queue Size: 100
       Value: true
     - Alpha: 1
@@ -556,6 +558,14 @@ Visualization Manager:
       Shaft Length: 0.10000000149011612
       Topic: /mpc/path
       Unreliable: false
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /mpc/markers
+      Name: MarkerArray
+      Namespaces:
+        mpc_path_marker: true
+      Queue Size: 100
       Value: true
   Enabled: true
   Global Options:
@@ -585,7 +595,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 22.5205078125
+      Distance: 12.731460571289062
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -593,17 +603,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -3.21651554107666
-        Y: -0.02248525619506836
+        X: -0.25931107997894287
+        Y: -1.049986720085144
         Z: 0
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.9997971057891846
+      Pitch: 1.4997963905334473
       Target Frame: <Fixed Frame>
-      Yaw: 3.133023262023926
+      Yaw: 3.1480305194854736
     Saved: ~
 Window Geometry:
   Displays:

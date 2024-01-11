@@ -136,7 +136,7 @@ std::optional<casadi::DMDict> KinematicMpc::solve(const casadi::DMDict &in) {
   const auto &state_initial_condition = in.at(INITIAL_STATE_DICT_KEY);
   const auto &control_initial_condition = in.at(INITIAL_CONTROL_DICT_KEY);
   const auto trajectory_reinterp =
-      reinterpolate_reference(trajectory_, state_initial_condition);
+      reinterpolate_reference_trajectory(trajectory_, state_initial_condition);
 
   // set problem parameters
   opti_.set_value(trajectory_initial_conditions_, state_initial_condition);
@@ -158,7 +158,7 @@ std::optional<casadi::DMDict> KinematicMpc::solve(const casadi::DMDict &in) {
   }
 }
 
-casadi::DM KinematicMpc::reinterpolate_reference(const casadi::DM &traj,
+casadi::DM KinematicMpc::reinterpolate_reference_trajectory(const casadi::DM &traj,
                                                  const casadi::DM &x) const {
   using casadi::DM;
   using casadi::Slice;

@@ -141,6 +141,9 @@ casadi::DM MpcNode::path_to_casadi(const nav_msgs::Path &path) const {
         path.poses[i].pose.position.x, path.poses[i].pose.position.y,
         tf::getYaw(path.poses[i].pose.orientation), MPC_REF_SPEED};
   }
+
+  //Stop at last point
+  tmp(tmp.size1()-1, 3) = 0.0;
   return tmp;
 }
 
