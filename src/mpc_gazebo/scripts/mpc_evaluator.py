@@ -15,26 +15,10 @@ import tf
 import rospkg
 import rospy
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
+import matplotlib.pyplot as plt
 
 WORLD_FRAME_ID = "world"
 OBS_RADIUS = 0.5
-
-
-def dist(p1, p2):
-    return round(np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2), 3)
-
-
-def find_angle(v1, v2):
-    cosang = np.dot(v1, v2)
-    sinang = la.norm(np.cross(v1, v2))
-    return np.arctan2(sinang, cosang)
-
-
-def parse_csv(filename):
-    with open(filename) as f:
-        data = [tuple(line) for line in csv.reader(f)]
-
-    return np.array
 
 
 class MpcEvaluator(object):
@@ -126,7 +110,6 @@ class MpcEvaluator(object):
 
         msg_viz = MarkerArray()
         for idx, o in enumerate(self.obstacles):
-
             # CYLINDER
             marker = Marker()
             marker.header.frame_id = WORLD_FRAME_ID
@@ -155,11 +138,10 @@ class MpcEvaluator(object):
             marker.header.frame_id = WORLD_FRAME_ID
             marker.header.stamp = rospy.Time.now()
 
-
             marker.text = f"Obstacle {idx}"
             marker.type = 9
             marker.action = 0
-            marker.id = len(self.obstacles)+idx
+            marker.id = len(self.obstacles) + idx
             marker.ns = "mpc/obs"
             marker.scale.z = 1.0
 
@@ -174,13 +156,15 @@ class MpcEvaluator(object):
             msg_viz.markers.append(marker)
         self.obstacles_viz_pub.publish(msg_viz)
 
-    def get_nearest_index(self, curr_x, curr_y):
+    def get_nearest_index(self, state):
+        (curr_x, curr_y, _, _) = state
         dx = [curr_x - x for x in self.waypoints[:, 0]]
         dy = [curr_y - y for y in self.waypoints[:, 1]]
         return int(np.argmin(np.hypot(dx, dy)))
 
-    def compute_cte(self, curr_x, curr_y, curr_yaw):
-        target_index = self.get_nearest_index(curr_x, curr_y)
+    def compute_cte(self, state):
+        (curr_x, curr_y, curr_yaw, _) = state
+        target_index = self.get_nearest_index(state)
         dx = curr_x - self.waypoints[target_index, 0]
         dy = curr_y - self.waypoints[target_index, 1]
 
@@ -194,6 +178,11 @@ class MpcEvaluator(object):
 
     # TODO: plot MPC results at the end of trial
     def plot(self):
+        cte = [self.compute_cte(x) for x in self.mpc_pos_log]
+        plt.figure()
+        plt.plot(cte)
+        plt.show()
+        plt.save("mpc_evaluation.png")
         return
 
     def run(self):
@@ -201,21 +190,16 @@ class MpcEvaluator(object):
             # check for goal and plot results
 
             if len(self.mpc_pos_log) > 0:
-                nearest = self.get_nearest_index(
-                    self.mpc_pos_log[-1][0], self.mpc_pos_log[-1][1]
-                )
-                cte = self.compute_cte(
-                    self.mpc_pos_log[-1][0],
-                    self.mpc_pos_log[-1][1],
-                    self.mpc_pos_log[-1][2],
-                )
-                rospy.loginfo(f"nearest: {nearest} error: {cte}")
-                if nearest == self.waypoints.shape[0] - 1:
+                if (
+                    self.get_nearest_index(self.mpc_pos_log[-1])
+                    >= self.waypoints.shape[0] - 3
+                ):
                     rospy.loginfo(f"Goal Reached")
-                    # TODO: plot
+                    self.odometry_sub.unregister()
+                    self.plot()
 
                     rospy.loginfo(f"Saving Image to")
-                    rospy.signal_shutdown()
+                    rospy.signal_shutdown("Done")
 
             self.publish_path()
             self.publish_obstacles()
