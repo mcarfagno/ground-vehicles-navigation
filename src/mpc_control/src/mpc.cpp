@@ -95,13 +95,18 @@ KinematicMpc::KinematicMpc(const KinematicModel &m, const MpcParameters &p,
   opti_.subject_to(v_dv(0) == trajectory_initial_conditions_(3));
 
   // obstacle proximity cost
-  for (casadi_int j = 0; j < obstacles.size1(); j++) {
-
-    auto h = log(pow((x_dv - obstacles(j, 0)) / obstacles(j, 2), 2) +
-                 pow((y_dv - obstacles(j, 1)) / obstacles(j, 2), 2));
-    opti_.subject_to(h > 0);
-    cost += sum1(exp(p.obstacle_avoidance_weight * exp(-h)));
+  // adapted from: https://github.com/dawsonc/obstacle_avoidance_mpc/
+  for (std::size_t i = 0; i < N_; i++) {
+    for (casadi_int j = 0; j < obstacles.size1(); j++) {
+      // signed distance to the obstacle
+      // (+ is outside the obstacle, - is inside).
+      auto d = pow(x_dv(i) - obstacles(j, 0), 2) +
+               pow(y_dv(i) - obstacles(j, 1), 2) - pow(obstacles(j, 2), 2);
+      auto stiffness = 100;
+      cost += log(1 + exp(stiffness * (p.min_obstacle_margin - d))) / stiffness;
+    }
   }
+
   // input rate of change
   opti_.subject_to(opti_.bounded(m.jerk_min * dt_ - sl_acc_dv(0),
                                  acc_dv(0) - optimal_control_prev_(0),
