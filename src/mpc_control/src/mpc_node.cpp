@@ -75,6 +75,7 @@ void MpcNode::run() {
       obstacles_ = std::nullopt;
       latest_odom_ = std::nullopt;
       publish_mpc_cmd(0.0, 0.0);
+      continue;
     }
 
     // control loop
@@ -157,10 +158,7 @@ casadi::DM MpcNode::path_to_casadi(const nav_msgs::Path &path) const {
   }
 
   // Decelerate and stop at end of Path
-  auto decel = 10;
-  for (std::size_t i = 0; i < decel; i++) {
-    tmp(tmp.size1() - (decel + i), 3) -= MPC_REF_SPEED * i / decel;
-  }
+  tmp(tmp.size1() - 1, 3) = 0.0;
   return tmp;
 }
 

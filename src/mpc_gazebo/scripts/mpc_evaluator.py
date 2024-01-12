@@ -138,7 +138,7 @@ class MpcEvaluator(object):
             marker.header.frame_id = WORLD_FRAME_ID
             marker.header.stamp = rospy.Time.now()
 
-            marker.text = f"Obstacle {idx}"
+            marker.text = f"Obstacle \n ID {idx}"
             marker.type = 9
             marker.action = 0
             marker.id = len(self.obstacles) + idx
@@ -178,11 +178,55 @@ class MpcEvaluator(object):
 
     # TODO: plot MPC results at the end of trial
     def plot(self):
+        # downsaple a bit, the log is very long and lags
+        self.mpc_pos_log = self.mpc_pos_log[::10]
+
         cte = [self.compute_cte(x) for x in self.mpc_pos_log]
-        plt.figure()
-        plt.plot(cte)
+
+        fig = plt.figure()
+        spec = fig.add_gridspec(ncols=2, nrows=4)
+
+        # track error
+        ax0 = fig.add_subplot(spec[0, :])
+        #plt.title("Tracking Error")
+        plt.plot(cte, label="crosstrack error [m]")
+        plt.axhline(y=1.0, color="tab:orange", linestyle="-")
+        plt.axhline(y=-1.0, color="tab:orange", linestyle="-")
+        plt.xticks([])
+        plt.legend()
+
+        # speed
+        ax1 = fig.add_subplot(spec[1, :])
+        #plt.title("Vehicle Speed")
+        plt.plot([x[3] * 3.6 for x in self.mpc_pos_log], label="vehicle speed [km/h]")
+        plt.axhline(y=20.0, color="tab:orange", linestyle="-")
+        plt.xticks([])
+        plt.legend()
+
+        ax2 = fig.add_subplot(spec[2:, :])
+        #plt.title("Vehicle Trajectory")
+        plt.plot(
+            [x[0] for x in self.waypoints],
+            [x[1] for x in self.waypoints],
+            color="tab:orange",
+            marker=".",
+            label="waypoints",
+        )
+        for o in self.obstacles:
+            obs = plt.Circle((o[0], o[1]), o[2], color="tab:orange")
+            ax2.add_patch(obs)
+
+        plt.plot(
+            [x[0] for x in self.mpc_pos_log],
+            [x[1] for x in self.mpc_pos_log],
+            label="vehicle trajectory",
+        )
+        plt.axis("equal")
+        plt.legend()
+
+        plt.tight_layout()
         plt.show()
-        plt.save("mpc_evaluation.png")
+        plt.savefig("mpc_evaluation.png")
         return
 
     def run(self):
