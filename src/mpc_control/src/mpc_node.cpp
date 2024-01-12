@@ -54,15 +54,27 @@ void MpcNode::run() {
       ROS_INFO("Creating CasADi problem instance");
       auto model = KinematicModel();
       auto params = MpcParameters();
-      params.DT = 1./rate_;
+      params.DT = 1. / rate_;
       params.N = mpc_horizon_steps_;
-      params.min_obstacle_margin  = obs_safety_dist_;
+      params.min_obstacle_margin = obs_safety_dist_;
 
       // NOTE: I am assuming path and obstacles not changing
       // this is mostly due to having pre-fixed sizes for the obstacles
       // if the number of obstacles changes the problem must be rebuilt
       mpc_ = KinematicMpc(model, params, path_to_casadi(path_.value()),
                           obstacles_to_casadi(obstacles_.value()));
+    }
+
+    // check for goal
+    if (std::hypot(path_.value().poses.back().pose.position.x -
+                       latest_odom_.value().pose.pose.position.x,
+                   path_.value().poses.back().pose.position.y -
+                       latest_odom_.value().pose.pose.position.y) <= 1.0) {
+      ROS_INFO("Goal Reached. Resetting Controller");
+      path_ = std::nullopt;
+      obstacles_ = std::nullopt;
+      latest_odom_ = std::nullopt;
+      publish_mpc_cmd(0.0, 0.0);
     }
 
     // control loop
@@ -144,8 +156,11 @@ casadi::DM MpcNode::path_to_casadi(const nav_msgs::Path &path) const {
         tf::getYaw(path.poses[i].pose.orientation), MPC_REF_SPEED};
   }
 
-  //Stop at last point
-  tmp(tmp.size1()-1, 3) = 0.0;
+  // Decelerate and stop at end of Path
+  auto decel = 10;
+  for (std::size_t i = 0; i < decel; i++) {
+    tmp(tmp.size1() - (decel + i), 3) -= MPC_REF_SPEED * i / decel;
+  }
   return tmp;
 }
 
@@ -153,11 +168,9 @@ casadi::DM
 MpcNode::obstacles_to_casadi(const vision_msgs::Detection3DArray &obs) const {
   auto tmp = casadi::DM(obs.detections.size(), 3);
   for (std::size_t i = 0; i < obs.detections.size(); i++) {
-    tmp(i, casadi::Slice()) = {
-        obs.detections[i].bbox.center.position.x,
-        obs.detections[i].bbox.center.position.y,
-	obs.detections[i].bbox.size.x
-    };
+    tmp(i, casadi::Slice()) = {obs.detections[i].bbox.center.position.x,
+                               obs.detections[i].bbox.center.position.y,
+                               obs.detections[i].bbox.size.x};
   }
   return tmp;
 }
