@@ -2,8 +2,12 @@
 <launch>
   <!-- TODO: add weights -->
   <arg name="control_horizon" default="25"/>
+  <arg name="safety_distance" default="0.25"/>
 
-  <node name="mpc_node" pkg="mpc_control" type="mpc" respawn="false" output="screen"
-          args="-param control_horizon_len -model $(arg control_horizon)"/>
-	  
+  <node name="mpc_node" pkg="mpc_control" type="mpc" respawn="false" output="screen">
+    <param name="control_horizon_len" value="$(arg control_horizon"/>
+    <param name="obstacles_safety_distance " value="$(arg safety_distance"/>
+  </node>
+          
 </launch>
+

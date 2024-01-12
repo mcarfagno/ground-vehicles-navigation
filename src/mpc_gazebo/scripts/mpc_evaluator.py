@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
 
+from visualization_msgs.msg import Marker, MarkerArray
+from nav_msgs.msg import Odometry, Path
+from geometry_msgs.msg import PoseStamped
+from vision_msgs.msg import Detection3D, Detection3DArray, ObjectHypothesisWithPose
+
+import os
 import csv
 import math
-import os
-
 import numpy as np
+from numpy import linalg as la
+import tf
+
 import rospkg
 import rospy
-import tf
-from geometry_msgs.msg import PoseStamped
-from nav_msgs.msg import Odometry, Path
-from numpy import linalg as la
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
-from vision_msgs.msg import Detection3D, Detection3DArray, ObjectHypothesisWithPose
-from visualization_msgs.msg import Marker, MarkerArray
 
 WORLD_FRAME_ID = "world"
 OBS_RADIUS = 0.5
@@ -27,6 +28,13 @@ def find_angle(v1, v2):
     cosang = np.dot(v1, v2)
     sinang = la.norm(np.cross(v1, v2))
     return np.arctan2(sinang, cosang)
+
+
+def parse_csv(filename):
+    with open(filename) as f:
+        data = [tuple(line) for line in csv.reader(f)]
+
+    return np.array
 
 
 class MpcEvaluator(object):
@@ -141,14 +149,12 @@ class MpcEvaluator(object):
             msg_viz.markers.append(marker)
         self.obstacles_viz_pub.publish(msg_viz)
 
-    def get_nearest_index(self, robot_state):
-        (curr_x, curr_y, _, _) = robot_state
+    def get_nearest_index(self, curr_x, curr_y):
         dx = [curr_x - x for x in self.waypoints[:, 0]]
         dy = [curr_y - y for y in self.waypoints[:, 1]]
         return int(np.argmin(np.hypot(dx, dy)))
 
-    def compute_cte(self, robot_state):
-        (curr_x, curr_y, curr_yaw, _) = robot_state
+    def compute_cte(self, curr_x, curr_y, curr_yaw):
         target_index = self.get_nearest_index(curr_x, curr_y)
         dx = curr_x - self.waypoints[target_index, 0]
         dy = curr_y - self.waypoints[target_index, 1]
@@ -170,8 +176,14 @@ class MpcEvaluator(object):
             # check for goal and plot results
 
             if len(self.mpc_pos_log) > 0:
-                nearest = self.get_nearest_index(self.mpc_pos_log[-1])
-                cte = self.compute_cte(self.mpc_pos_log[-1])
+                nearest = self.get_nearest_index(
+                    self.mpc_pos_log[-1][0], self.mpc_pos_log[-1][1]
+                )
+                cte = self.compute_cte(
+                    self.mpc_pos_log[-1][0],
+                    self.mpc_pos_log[-1][1],
+                    self.mpc_pos_log[-1][2],
+                )
                 rospy.loginfo(f"nearest: {nearest} error: {cte}")
                 if nearest == self.waypoints.shape[0] - 1:
                     rospy.loginfo(f"Goal Reached")

@@ -24,7 +24,7 @@
   </include> 
 
   <!-- Vehicle pose -->
-  <arg name="x" default="0.5"/>
+  <arg name="x" default="1.0"/>
   <arg name="y" default="0"/>
   <arg name="z" default="0.05"/>
   <arg name="yaw" default="0.0"/>

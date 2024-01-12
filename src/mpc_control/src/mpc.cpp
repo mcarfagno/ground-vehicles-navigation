@@ -100,10 +100,9 @@ KinematicMpc::KinematicMpc(const KinematicModel &m, const MpcParameters &p,
     for (casadi_int j = 0; j < obstacles.size1(); j++) {
       // signed distance to the obstacle
       // (+ is outside the obstacle, - is inside).
-      auto d = pow(x_dv(i) - obstacles(j, 0), 2) +
-               pow(y_dv(i) - obstacles(j, 1), 2) - pow(obstacles(j, 2), 2);
-      auto stiffness = 100;
-      cost += log(1 + exp(stiffness * (p.min_obstacle_margin - d))) / stiffness;
+      auto d = sqrt(pow(x_dv(i) - obstacles(j, 0), 2) +
+               pow(y_dv(i) - obstacles(j, 1), 2)) - obstacles(j, 2);
+      cost += p.obstacle_avoidance_weight*log(1 + exp(m.vehicle_width + p.min_obstacle_margin - d));
     }
   }
 

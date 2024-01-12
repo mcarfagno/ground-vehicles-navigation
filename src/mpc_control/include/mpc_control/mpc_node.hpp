@@ -35,6 +35,7 @@ private:
   ros::Subscriber obstacles_sub_;
 
   float rate_;
+  float obs_safety_dist_;
   int mpc_horizon_steps_;
   MpcCmd prev_cmd_;
   std::optional<KinematicMpc> mpc_;

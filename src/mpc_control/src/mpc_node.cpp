@@ -14,6 +14,7 @@ MpcNode::MpcNode() : private_nh_("~") {
   // params
   private_nh_.param("rate", rate_, float(10.0));
   private_nh_.param("control_horizon_len", mpc_horizon_steps_, int(10));
+  private_nh_.param("obstacles_safety_distance", obs_safety_dist_, float(0.25));
 
   // publishers
   cmd_pub_ =
@@ -55,6 +56,7 @@ void MpcNode::run() {
       auto params = MpcParameters();
       params.DT = 1./rate_;
       params.N = mpc_horizon_steps_;
+      params.min_obstacle_margin  = obs_safety_dist_;
 
       // NOTE: I am assuming path and obstacles not changing
       // this is mostly due to having pre-fixed sizes for the obstacles
