@@ -126,6 +126,8 @@ class MpcEvaluator(object):
 
         msg_viz = MarkerArray()
         for idx, o in enumerate(self.obstacles):
+
+            # CYLINDER
             marker = Marker()
             marker.header.frame_id = WORLD_FRAME_ID
             marker.header.stamp = rospy.Time.now()
@@ -145,6 +147,29 @@ class MpcEvaluator(object):
             marker.pose.position.x = o[0]
             marker.pose.position.y = o[1]
             marker.pose.position.z = marker.scale.z * 0.5
+
+            msg_viz.markers.append(marker)
+
+            # TEXT
+            marker = Marker()
+            marker.header.frame_id = WORLD_FRAME_ID
+            marker.header.stamp = rospy.Time.now()
+
+
+            marker.text = f"Obstacle {idx}"
+            marker.type = 9
+            marker.action = 0
+            marker.id = len(self.obstacles)+idx
+            marker.ns = "mpc/obs"
+            marker.scale.z = 1.0
+
+            marker.color.r = 1.0
+            marker.color.g = 1.0
+            marker.color.b = 1.0
+            marker.color.a = 1.0
+            marker.pose.position.x = o[0]
+            marker.pose.position.y = o[1]
+            marker.pose.position.z = 1.5
 
             msg_viz.markers.append(marker)
         self.obstacles_viz_pub.publish(msg_viz)
@@ -190,7 +215,7 @@ class MpcEvaluator(object):
                     # TODO: plot
 
                     rospy.loginfo(f"Saving Image to")
-                    rospy.shutdown()
+                    rospy.signal_shutdown()
 
             self.publish_path()
             self.publish_obstacles()
