@@ -81,6 +81,10 @@
   <!-- Run the MPC evaluator script -->
   <!-- This publishes the waypoints and other topics needed for the MPC -->
   <node name="mpc_evaluator_$(arg robot_name)" pkg="mpc_gazebo" type="mpc_evaluator.py" respawn="false" output="screen"/>
+
+  <!-- Run the spawner script -->
+  <!-- Spawns obstacles in gazebo -->
+  <node name="obstacle_spawner" pkg="mpc_gazebo" type="obstacle_spawner.py" respawn="false" output="screen"/>
    
 </launch>
 
