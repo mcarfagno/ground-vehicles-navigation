@@ -17,9 +17,14 @@ The **src** directory contains the following ros packages:
 
 * `mpc_gazebo` -> ROS package containing all the necessary to run the MPC trial on the POLARIS_GEM vehicle and evaluate the results.
   * `scripts/mpc_evaluator.py` -> A script that permorms the MPC evaluation. This script starts a ROS node that publishes the *Path* and *Obstacles* for the controller and logs its position over time to evaluate the error metrics.
+  * `scripts/obstacle_spawner.py` -> A helper script to spawn gazebo entities from a template. 
   * `launch/mpc_demo.launch` -> Main launchfile that brings up the simulation environment, the control node and the evaluator script that performs the trial.
+  * `data/obstacles.csv` -> Obstacles used in the evaluation, with the form (x_pos, y_pos, radius) 
+  * `data/waypoints.csv` -> Waypoints used in the evaluation, with the form (x_pos, y_pos, heading) 
 
 The **docker** directory contains the dockerfile with all the dependencies in order to run the demo. See [Build with Docker] for more details.
+
+*note:* The assignment required a Path msg with GPS points. Path is specified for cartesian coordinates. I am making the assumption of the waypoints being their UTM cartesian projection in 'world' frame to be used with the world odometry.
 
 ## Controller Architecture
 
@@ -69,6 +74,7 @@ The final controller has been tuned with this set of parameters:
 The parameters were tuned to satisfy the requirement of **keeping the tracking error within 1m** while mantaining a satisfactory obstacle avoidance performance and a smooth, oscillation-free trajectory.
 
 <a href="results"><img src="./images/results.png" width="720"></a>
+*note:* I have found difficult to adjust the weights to keep the error within the bounds while keeping avoidance relibale for some obtacles (wich require more deviation). An option was to shrink/move those obstacles but I decided against it but rather try to find a trade-off and showcase better avoidance. 
 
 ### Build with Docker
 
