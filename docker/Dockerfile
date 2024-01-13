@@ -1,26 +1,13 @@
 FROM osrf/ros:noetic-desktop-full 
 
-# nvidia-container-runtime
-ENV NVIDIA_VISIBLE_DEVICES \
-    ${NVIDIA_VISIBLE_DEVICES:-all}
-ENV NVIDIA_DRIVER_CAPABILITIES \
-    ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPABILITIES,}graphics
-
 ARG DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-c"]
 
-# Install base utilities
+# Install misc. deps
+
 RUN apt-get update && \
     apt-get install -y \
-    git \
-    gnutls-bin \
-    jq \
-    less \
-    openssh-client \
-    python-psutil \
-    software-properties-common \
-    unzip \
-    wget \
+    python3-matplotlib \
     && rm -rf /var/lib/apt/lists/* /tmp/apt-packages
 
 # Install CasADi optimization framework
@@ -69,8 +56,10 @@ RUN apt-get update && \
     ros-noetic-velodyne-simulator \
     && rm -rf /var/lib/apt/lists/* /tmp/apt-packages
 
+# Build the ROS Workspace
 RUN mkdir ~/mpc_ws
 COPY src/mpc_gazebo /mpc_ws/src/mpc_gazebo
+COPY src/mpc_control /mpc_ws/src/mpc_control
 
 WORKDIR /mpc_ws/src
 RUN git clone https://gitlab.engr.illinois.edu/gemillins/POLARIS_GEM_e2.git
@@ -78,11 +67,6 @@ WORKDIR /mpc_ws
 RUN source /opt/ros/noetic/setup.bash && \
     catkin_make
 
-RUN echo 'ALL ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
-RUN echo 'Defaults env_keep += "DEBUG ROS_DISTRO"' >> /etc/sudoers
-
-COPY docker/env.sh /etc/profile.d/ade_env.sh
-COPY docker/entrypoint /ade_entrypoint
-
-ENTRYPOINT ["/ade_entrypoint"]
-CMD ["/bin/sh", "-c", "trap 'exit 147' TERM; tail -f /dev/null & wait ${!}"]
+# Set up the entrypoint
+COPY ./docker/entrypoint.sh /
+ENTRYPOINT [ "/entrypoint.sh" ]
