@@ -53,5 +53,18 @@ The parameters were tuned to satisfy the requirement of **keeping the tracking e
 
 From this repository root directory:
 ```bash
-
+docker build -t mpc-demo -f docker/Dockerfile .
 ```
+
+Run it with:
+```bash
+docker run -it --gpus=all --net=host --ipc=host --privileged \
+    --env="DISPLAY" \
+    --env="QT_X11_NO_MITSHM=1" \
+    --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
+    --volume="${XAUTHORITY}:/root/.Xauthority" \
+    mpc-demo:latest \
+    bash -c "roslaunch mpc_gazebo mpc_demo.launch"
+```
+
+*NOTE:* this requires a graphical environment and tries to uses GPU, if using an NVIDIA GPU please see [here](https://wiki.archlinux.org/title/Docker#Run_GPU_accelerated_Docker_containers_with_NVIDIA_GPUs) and make sure to use the [nvidia-container-toolkit](https://github.com/NVIDIA/nvidia-container-toolkit)
