@@ -16,6 +16,8 @@ catkin_package()
 
 catkin_install_python(PROGRAMS scripts/mpc_evaluator.py
                       DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+catkin_install_python(PROGRAMS scripts/obstacle_spawner.py
+                      DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 install(DIRECTORY config launch
         DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
