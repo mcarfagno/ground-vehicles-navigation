@@ -1,6 +1,57 @@
+## Ground vehicles navigation
 
+<a href="results"><img src="./images/banner.gif" width="600"></a>
+See full [video](./mpc_demo.mp4)
 
-## Build with Docker
+### Abstract
+
+The Goal of this assignment was to create a model predictive controller to use with the [POLARIS_GEM_e2 simulator](https://gitlab.engr.illinois.edu/gemillins/POLARIS_GEM_e2), which given a specific path, is able to follow it with an accuracy of at least 1m while able to avoid obstacles.
+
+In this repository I propose my solution and showcase the results.
+
+### Project Structure
+
+The `src` directory contains the following ros packages:
+* `mpc_control` -> ROS package containing the actual MPC implementation.
+  * `src/mpc_node.cpp` -> Actual control node, built as a ROS wrapper of a optimization problem modelled with the [CasADi](https://web.casadi.org/docs/) framework.
+
+* `mpc_gazebo` -> ROS package containing all the necessary to run the MPC trial on the POLARIS_GEM vehicle and evaluate the results.
+  * `scripts/mpc_evaluator.py` -> A script that permorms the MPC evaluation. This script starts a ROS node that publishes the *Path* and *Obstacles* for the controller and logs its position over time to evaluate the error metrics.
+  * `launch/mpc_demo.launch` -> Main launchfile that brings up the simulation environment, the control node and the evaluator script that performs the trial.
+
+The `docker` directory contains the dockerfile with all the dependencies in order to run the controller and the simulation. See [Build with Docker] for more details.
+
+### Controller Architecture
+
+The vehicle is modelled in the controller with this fixed kinematic model and kinematic constrains:
+| Wheel Base | Width | Min/Max Steer | Min/Max Slew | Min/Max Speed | Min/Max Acc | Min/Max Jerk |
+| --- | --- | --- | --- | --- | --- |--- |
+| 1.75m    | 0.5m    | [-0.61,0.61] rad    | [-0.5,0.5] rad/s    | [0,10] m/s    | [-3,3] m/s^2   |  [-1.5,1.5] m/s^2  |
+
+### Results
+
+The final controller has been tuned with this set of parameters:
+
+| Param | Value |
+| --- | --- |
+| `control_horizon_len` | 20 |
+| `time_step` | 0.1 |
+| `min_obstacle_margin ` | 0.25 |
+| `x_pos_error_weight` | 1.0 |
+| `y_pos_error_weight` | 1.0 |
+| `heading_pos_error_weight` | 0.1 |
+| `speed_error_weight` | 1.0 |
+| `acceleration_rate_weight` | 10.0 |
+| `steer_rate_weight` | 100.0 |
+| `obstacle_distance_weight` | 5.0 |
+
+The parameters were tuned to satisfy the requirement of **keeping the tracking error within 1m** while mantaining a satisfactory obstacle avoidance performance and smooth, oscillation-free driving.
+
+<a href="results"><img src="./images/results.png" width="720"></a>
+
+### Build with Docker
+
+From this repository root directory:
 ```bash
 
 ```
