@@ -26,7 +26,7 @@ The `docker` directory contains the dockerfile with all the dependencies in orde
 The vehicle is modelled in the controller with this fixed kinematic model and kinematic constrains:
 | Wheel Base | Width | Min/Max Steer | Min/Max Slew | Min/Max Speed | Min/Max Acc | Min/Max Jerk |
 | --- | --- | --- | --- | --- | --- |--- |
-| 1.75m    | 0.5m    | [-0.61,0.61] rad    | [-0.5,0.5] rad/s    | [0,10] m/s    | [-3,3] m/s^2   |  [-1.5,1.5] m/s^2  |
+| 1.75 m    | 0.5 m    | [-0.61,0.61] rad    | [-0.5,0.5] rad/s    | [0,10] m/s    | [-3,3] m/s^2   |  [-1.5,1.5] m/s^3  |
 
 ### Results
 
