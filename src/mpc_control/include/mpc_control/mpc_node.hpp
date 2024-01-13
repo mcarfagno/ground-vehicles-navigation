@@ -34,9 +34,17 @@ private:
   ros::Subscriber path_sub_;
   ros::Subscriber obstacles_sub_;
 
+  int mpc_horizon_steps_;
   float rate_;
   float obs_safety_dist_;
-  int mpc_horizon_steps_;
+  float x_weight_;
+  float y_weight_;
+  float yaw_weight_;
+  float speed_weight_;
+  float steer_rate_weight_;
+  float acc_rate_weight_;
+  float dist_weight_;
+
   MpcCmd prev_cmd_;
   std::optional<KinematicMpc> mpc_;
   std::optional<nav_msgs::Odometry> latest_odom_;

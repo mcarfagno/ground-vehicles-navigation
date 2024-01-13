@@ -181,17 +181,16 @@ class MpcEvaluator(object):
         # downsaple a bit, the log is very long and lags
         self.mpc_pos_log = self.mpc_pos_log[::10]
 
-        cte = [self.compute_cte(x) for x in self.mpc_pos_log]
-
+        plt.style.use("seaborn")
         fig = plt.figure()
         spec = fig.add_gridspec(ncols=2, nrows=4)
 
         # track error
         ax0 = fig.add_subplot(spec[0, :])
         #plt.title("Tracking Error")
-        plt.plot(cte, label="crosstrack error [m]")
-        plt.axhline(y=1.0, color="tab:orange", linestyle="-")
-        plt.axhline(y=-1.0, color="tab:orange", linestyle="-")
+        plt.plot([self.compute_cte(x) for x in self.mpc_pos_log], label="crosstrack error [m]")
+        plt.axhline(y=1.0, color="crimson", linestyle="-", label="maximum cte")
+        plt.axhline(y=-1.0, color="crimson", linestyle="-",label="minimum cte")
         plt.xticks([])
         plt.legend()
 
@@ -199,7 +198,7 @@ class MpcEvaluator(object):
         ax1 = fig.add_subplot(spec[1, :])
         #plt.title("Vehicle Speed")
         plt.plot([x[3] * 3.6 for x in self.mpc_pos_log], label="vehicle speed [km/h]")
-        plt.axhline(y=20.0, color="tab:orange", linestyle="-")
+        plt.axhline(y=20.0, color="crimson", linestyle="-",label="target speed")
         plt.xticks([])
         plt.legend()
 
@@ -208,12 +207,12 @@ class MpcEvaluator(object):
         plt.plot(
             [x[0] for x in self.waypoints],
             [x[1] for x in self.waypoints],
-            color="tab:orange",
+            color="crimson",
             marker=".",
             label="waypoints",
         )
         for o in self.obstacles:
-            obs = plt.Circle((o[0], o[1]), o[2], color="tab:orange")
+            obs = plt.Circle((o[0], o[1]), o[2], color="crimson")
             ax2.add_patch(obs)
 
         plt.plot(
@@ -226,7 +225,7 @@ class MpcEvaluator(object):
 
         plt.tight_layout()
         plt.show()
-        plt.savefig("mpc_evaluation.png")
+        plt.savefig("./mpc_evaluation.png")
         return
 
     def run(self):
