@@ -26,12 +26,12 @@ The `docker` directory contains the dockerfile with all the dependencies in orde
 The controller implements the following MPC problem:
 
 $$
-begin{aligned}
-min_{x_1,\dots,x_{N+1}, u_1, \dots, u_{N+1}} \quad & \sum_{k=1}^{N+1}{x_k -xref_k}^T Q {x_k-xref_k} + \sum_{k=1}^{N}{u_k -u_{k-1} }^T R {u_k- u_{k-1}} \sum_{k=1}^{N}\sum_{j=1}^{N} D * \log(1+ e^{ -d(x_k, o_k)} +S(u_k, u_{k-1}) \\
-\textrm{s.t.} \quad & x_{k+1}=F(x_k,u_k) \\
+\begin{aligned}
+min_{x_1,\dots,x_{N+1}, u_1, \dots, u_{N+1}} \quad & \sum_{k=1}^{N+1} ({x_k - xref_k})^T Q ({x_k- xref_k}) + \sum_{k=2}^{N} ({u_k - u_{k-1} })^T R ({u_k- u_{k-1}}) \sum_{k=1}^{N}\sum_{j=1}^{O} D * \log(1 + e^{ -d(x_k, o_k)} + S(u_k, u_{k-1}) \\
+\textrm{s.t.} \quad & x_{k+1}=f(x_k,u_k) \\
 \quad & u_{min} \leq u_k \leq u_{max}    \\
 \quad & x_{min} \leq x_k \leq x_{max}    \\
-\quad & x_0 == x_{start}    \\
+\quad & x_1 == x_{start}    \\
 \end{aligned}
 $$
 
@@ -41,9 +41,10 @@ Where:
 * $Q$ tracking error weight matrix
 * $R$ control rate weight matrix
 * $D$ obstacle proximity weight, *where d(x_k,o_j) is the signed distance of the vehicle at time k from obstacle j*
-* $S$ is the control rate *slack* cost 
+* $S$ is the control rate *slack* cost
+* $f$ is the function of our model
 
-The vehicle is modelled in the controller with this fixed kinematic model and kinematic constrains:
+The vehicle is modelled in the controller the *bicycle model* kinematic equations and these kinematic constrains:
 | Wheel Base | Width | Min/Max Steer | Min/Max Slew | Min/Max Speed | Min/Max Acc | Min/Max Jerk |
 | --- | --- | --- | --- | --- | --- |--- |
 | 1.75 m    | 0.5 m    | [-0.61,0.61] rad    | [-0.5,0.5] rad/s    | [0,10] m/s    | [-3,3] m/s^2   |  [-1.5,1.5] m/s^3  |
