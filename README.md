@@ -19,7 +19,7 @@ The **src** directory contains the following ros packages:
   * `scripts/mpc_evaluator.py` -> A script that permorms the MPC evaluation. This script starts a ROS node that publishes the *Path* and *Obstacles* for the controller and logs its position over time to evaluate the error metrics.
   * `launch/mpc_demo.launch` -> Main launchfile that brings up the simulation environment, the control node and the evaluator script that performs the trial.
 
-The **docker** directory contains the dockerfile with all the dependencies in order to run the controller and the simulation. See [Build with Docker] for more details.
+The **docker** directory contains the dockerfile with all the dependencies in order to run the demo. See [Build with Docker] for more details.
 
 ## Controller Architecture
 
@@ -41,7 +41,7 @@ Where:
 * $Q$ tracking error weight matrix
 * $R$ control rate weight matrix
 * $D$ obstacle proximity weight, *where d(x_k,o_j) is the signed distance of the vehicle at time k from obstacle j*
-* $S$ is the control rate slack cost, this makes the *jerk* and *slew* soft-constrains.
+* $S$ is the control rate slack cost, this makes *jerk* and *slew* soft-constrains.
 * $f$ is the function of our model
 
 The vehicle is modelled in the controller the *bicycle model* kinematic equations and these kinematic constrains:
@@ -80,7 +80,7 @@ docker build -t mpc-demo -f docker/Dockerfile .
 Run it:
 ```bash
 xhost +local:
-docker run -it --gpus=all --net=host --ipc=host --privileged \
+docker run -it --net=host --ipc=host --privileged \
     --env="DISPLAY" \
     --env="QT_X11_NO_MITSHM=1" \
     --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
@@ -88,4 +88,3 @@ docker run -it --gpus=all --net=host --ipc=host --privileged \
     mpc-demo:latest \
     bash -c "roslaunch mpc_gazebo mpc_demo.launch"
 ```
-*NOTE:* this requires a graphical environment and tries to uses GPU, if using an NVIDIA GPU please make sure to use the [nvidia-container-toolkit](https://github.com/NVIDIA/nvidia-container-toolkit)
