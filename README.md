@@ -23,7 +23,25 @@ The `docker` directory contains the dockerfile with all the dependencies in orde
 
 ### Controller Architecture
 
-The controller is based around the 
+The controller implements the following MPC problem:
+
+$$
+begin{aligned}
+min_{x_1,\dots,x_{N+1}, u_1, \dots, u_{N+1}} \quad & \sum_{k=1}^{N+1}{x_k -xref_k}^T Q {x_k-xref_k} + \sum_{k=1}^{N}{u_k -u_{k-1} }^T R {u_k- u_{k-1}} \sum_{k=1}^{N}\sum_{j=1}^{N} D * \log(1+ e^{ -d(x_k, o_k)} +S(u_k, u_{k-1}) \\
+\textrm{s.t.} \quad & x_{k+1}=F(x_k,u_k) \\
+\quad & u_{min} \leq u_k \leq u_{max}    \\
+\quad & x_{min} \leq x_k \leq x_{max}    \\
+\quad & x_0 == x_{start}    \\
+\end{aligned}
+$$
+
+Where:
+* $x_k$ is the state of the vehicle {x,y,heading,speed}
+* $u_k$ is the control input to the vehicle {acceleration,steer}
+* $Q$ tracking error weight matrix
+* $R$ control rate weight matrix
+* $D$ obstacle proximity weight, *where d(x_k,o_j) is the signed distance of the vehicle at time k from obstacle j*
+* $S$ is the control rate *slack* cost 
 
 The vehicle is modelled in the controller with this fixed kinematic model and kinematic constrains:
 | Wheel Base | Width | Min/Max Steer | Min/Max Slew | Min/Max Speed | Min/Max Acc | Min/Max Jerk |
@@ -47,7 +65,7 @@ The final controller has been tuned with this set of parameters:
 | `steer_rate_weight` | 100.0 |
 | `obstacle_distance_weight` | 5.0 |
 
-The parameters were tuned to satisfy the requirement of **keeping the tracking error within 1m** while mantaining a satisfactory obstacle avoidance performance and smooth, oscillation-free driving.
+The parameters were tuned to satisfy the requirement of **keeping the tracking error within 1m** while mantaining a satisfactory obstacle avoidance performance and a smooth, oscillation-free trajectory.
 
 <a href="results"><img src="./images/results.png" width="720"></a>
 
@@ -70,4 +88,3 @@ docker run -it --gpus=all --net=host --ipc=host --privileged \
     bash -c "roslaunch mpc_gazebo mpc_demo.launch"
 ```
 *NOTE:* this requires a graphical environment and tries to uses GPU, if using an NVIDIA GPU please make sure to use the [nvidia-container-toolkit](https://github.com/NVIDIA/nvidia-container-toolkit)
-
