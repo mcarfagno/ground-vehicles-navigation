@@ -4,11 +4,13 @@
   <arg name="rate" default="10.0"/>
   <arg name="control_horizon" default="15"/>
   <arg name="safety_distance" default="0.25"/>
+  <arg name="obstacle_weight" default="7.0"/>
 
   <node name="mpc_node" pkg="mpc_control" type="mpc" respawn="false" output="screen">
     <param name="rate" value="$(arg rate)"/>
     <param name="control_horizon_len" value="$(arg control_horizon)"/>
-    <param name="obstacles_safety_distance " value="$(arg safety_distance)"/>
+    <param name="obstacles_safety_distance" value="$(arg safety_distance)"/>
+    <param name="obstacle_distance_weight" value="$(arg obstacle_weight)"/>
   </node>
           
 </launch>

@@ -100,11 +100,13 @@ KinematicMpc::KinematicMpc(const KinematicModel &m, const MpcParameters &p,
     for (casadi_int j = 0; j < obstacles.size1(); j++) {
       // signed distance to the obstacle
       // (+ is outside the obstacle, - is inside).
-      auto d = sqrt(pow(x_dv(i) - obstacles(j, 0), 2) +
-                    pow(y_dv(i) - obstacles(j, 1), 2)) -
+      auto d = sqrt(pow(x_dv(i+1) - obstacles(j, 0), 2) +
+                    pow(y_dv(i+1) - obstacles(j, 1), 2)) -
                obstacles(j, 2);
+      
+      // proximity cost
       cost += p.obstacle_avoidance_weight *
-              log(1 + exp(m.vehicle_width + p.min_obstacle_margin - d));
+              log(1 + exp(m.vehicle_width*0.5 + p.min_obstacle_margin - d));
     }
   }
 
