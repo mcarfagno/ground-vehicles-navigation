@@ -22,7 +22,7 @@ static const char OPTIMIZED_TRAJECTORY_DICT_KEY[] = "x_optimized";
 struct KinematicModel {
   // Vehicle Kin constrains
   double wheel_base = 1.75;     // [m]
-  double vehicle_width = 0.6;   // [m]
+  double vehicle_width = 1.2;   // [m]
   double v_min = 0.0;           // [m/s]
   double v_max = 10.0;          // [m/s]
   double a_min = -3.0;          // [m/ss]

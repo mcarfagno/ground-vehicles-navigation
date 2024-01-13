@@ -47,7 +47,7 @@ Where:
 The vehicle is modelled in the controller the *bicycle model* kinematic equations and these kinematic constrains:
 | Wheel Base | Width | Min/Max Steer | Min/Max Slew | Min/Max Speed | Min/Max Acc | Min/Max Jerk |
 | --- | --- | --- | --- | --- | --- |--- |
-| 1.75 m    | 0.5 m    | [-0.61,0.61] rad    | [-0.5,0.5] rad/s    | [0,10] m/s    | [-3,3] m/s^2   |  [-1.5,1.5] m/s^3  |
+| 1.75 m    | 1.2 m    | [-0.61,0.61] rad    | [-0.5,0.5] rad/s    | [0,10] m/s    | [-3,3] m/s^2   |  [-1.5,1.5] m/s^3  |
 
 ## Results
 
@@ -64,7 +64,7 @@ The final controller has been tuned with this set of parameters:
 | `speed_error_weight` | 1.0 |
 | `acceleration_rate_weight` | 10.0 |
 | `steer_rate_weight` | 100.0 |
-| `obstacle_distance_weight` | 5.0 |
+| `obstacle_distance_weight` | 7.0 |
 
 The parameters were tuned to satisfy the requirement of **keeping the tracking error within 1m** while mantaining a satisfactory obstacle avoidance performance and a smooth, oscillation-free trajectory.
 
