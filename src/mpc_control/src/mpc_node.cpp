@@ -16,6 +16,15 @@ MpcNode::MpcNode() : private_nh_("~") {
   private_nh_.param("control_horizon_len", mpc_horizon_steps_, int(10));
   private_nh_.param("obstacles_safety_distance", obs_safety_dist_, float(0.25));
 
+  // weights of the cost function terms
+  private_nh_.param("x_pos_error_weight", x_weight_, float(1.0));
+  private_nh_.param("y_pos_error_weight", y_weight_, float(1.0));
+  private_nh_.param("heading_pos_error_weight", yaw_weight_, float(0.1));
+  private_nh_.param("speed_error_weight", speed_weight_, float(1.0));
+  private_nh_.param("acceleration_rate_weight", acc_rate_weight_, float(10.0));
+  private_nh_.param("steer_rate_weight", steer_rate_weight_, float(100.0));
+  private_nh_.param("obstacle_distance_weight", dist_weight_, float(5.0));
+
   // publishers
   cmd_pub_ =
       nh_.advertise<ackermann_msgs::AckermannDrive>("/gem/ackermann_cmd", 10);
@@ -57,6 +66,12 @@ void MpcNode::run() {
       params.DT = 1. / rate_;
       params.N = mpc_horizon_steps_;
       params.min_obstacle_margin = obs_safety_dist_;
+      params.state_error_weights = {x_weight_, y_weight_, yaw_weight_,
+                                    speed_weight_};
+      params.control_rate_weights = {acc_rate_weight_, steer_rate_weight_};
+      params.min_obstacle_margin = obs_safety_dist_;
+      params.obstacle_avoidance_weight = dist_weight_;
+
 
       // NOTE: I am assuming path and obstacles not changing
       // this is mostly due to having pre-fixed sizes for the obstacles
