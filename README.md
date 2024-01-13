@@ -1,17 +1,17 @@
-## Ground vehicles navigation
+# Ground vehicles navigation
 
 <a href="results"><img src="./images/banner.gif" width="600"></a>
 See full [video](./mpc_demo.mp4)
 
-### Abstract
+## Abstract
 
 The Goal of this assignment was to create a model predictive controller to use with the [POLARIS_GEM_e2 simulator](https://gitlab.engr.illinois.edu/gemillins/POLARIS_GEM_e2), which given a specific path, is able to follow it with an accuracy of at least 1m while able to avoid obstacles.
 
 In this repository I propose my solution and showcase the results.
 
-### Project Structure
+## Project Structure
 
-The `src` directory contains the following ros packages:
+The **src** directory contains the following ros packages:
 * `mpc_control` -> ROS package containing the actual MPC implementation.
   * `src/mpc_node.cpp` -> Actual control node, built as a ROS wrapper of a optimization problem modelled with the [CasADi](https://web.casadi.org/docs/) framework.
 
@@ -19,15 +19,15 @@ The `src` directory contains the following ros packages:
   * `scripts/mpc_evaluator.py` -> A script that permorms the MPC evaluation. This script starts a ROS node that publishes the *Path* and *Obstacles* for the controller and logs its position over time to evaluate the error metrics.
   * `launch/mpc_demo.launch` -> Main launchfile that brings up the simulation environment, the control node and the evaluator script that performs the trial.
 
-The `docker` directory contains the dockerfile with all the dependencies in order to run the controller and the simulation. See [Build with Docker] for more details.
+The **docker** directory contains the dockerfile with all the dependencies in order to run the controller and the simulation. See [Build with Docker] for more details.
 
-### Controller Architecture
+## Controller Architecture
 
 The controller implements the following MPC problem:
 
 $$
 \begin{aligned}
-min_{x_1,\dots,x_{N+1}, u_1, \dots, u_{N+1}} \quad & \sum_{k=1}^{N+1} ({x_k - xref_k})^T Q ({x_k- xref_k}) + \sum_{k=2}^{N} ({u_k - u_{k-1} })^T R ({u_k- u_{k-1}}) \sum_{k=1}^{N}\sum_{j=1}^{O} D * \log(1 + e^{ -d(x_k, o_k)} + S(u_k, u_{k-1}) \\
+min_{x_1,\dots,x_{N+1}, u_1, \dots, u_{N+1}} \quad & \sum_{k=1}^{N+1} ({x_k - xref_k})^T Q ({x_k- xref_k}) + \sum_{k=2}^{N} ({u_k - u_{k-1} })^T R ({u_k- u_{k-1}}) \sum_{k=1}^{N}\sum_{j=1}^{O} D \log(1 + e^{ -d(x_k, o_k)}) + S(u_k, u_{k-1}) \\
 \textrm{s.t.} \quad & x_{k+1}=f(x_k,u_k) \\
 \quad & u_{min} \leq u_k \leq u_{max}    \\
 \quad & x_{min} \leq x_k \leq x_{max}    \\
@@ -41,7 +41,7 @@ Where:
 * $Q$ tracking error weight matrix
 * $R$ control rate weight matrix
 * $D$ obstacle proximity weight, *where d(x_k,o_j) is the signed distance of the vehicle at time k from obstacle j*
-* $S$ is the control rate *slack* cost
+* $S$ is the control rate slack cost, this makes the *jerk* and *slew* soft-constrains.
 * $f$ is the function of our model
 
 The vehicle is modelled in the controller the *bicycle model* kinematic equations and these kinematic constrains:
@@ -49,7 +49,7 @@ The vehicle is modelled in the controller the *bicycle model* kinematic equation
 | --- | --- | --- | --- | --- | --- |--- |
 | 1.75 m    | 0.5 m    | [-0.61,0.61] rad    | [-0.5,0.5] rad/s    | [0,10] m/s    | [-3,3] m/s^2   |  [-1.5,1.5] m/s^3  |
 
-### Results
+## Results
 
 The final controller has been tuned with this set of parameters:
 
