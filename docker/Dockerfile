@@ -8,6 +8,7 @@ SHELL ["/bin/bash", "-c"]
 RUN apt-get update && \
     apt-get install -y \
     apt-utils \
+    python3-tk \
     python3-matplotlib \
     && rm -rf /var/lib/apt/lists/* /tmp/apt-packages
 

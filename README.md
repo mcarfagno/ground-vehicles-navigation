@@ -23,6 +23,8 @@ The `docker` directory contains the dockerfile with all the dependencies in orde
 
 ### Controller Architecture
 
+The controller is based around the 
+
 The vehicle is modelled in the controller with this fixed kinematic model and kinematic constrains:
 | Wheel Base | Width | Min/Max Steer | Min/Max Slew | Min/Max Speed | Min/Max Acc | Min/Max Jerk |
 | --- | --- | --- | --- | --- | --- |--- |
@@ -56,8 +58,9 @@ From this repository root directory:
 docker build -t mpc-demo -f docker/Dockerfile .
 ```
 
-Run it with:
+Run it:
 ```bash
+xhost +local:
 docker run -it --gpus=all --net=host --ipc=host --privileged \
     --env="DISPLAY" \
     --env="QT_X11_NO_MITSHM=1" \
@@ -66,5 +69,5 @@ docker run -it --gpus=all --net=host --ipc=host --privileged \
     mpc-demo:latest \
     bash -c "roslaunch mpc_gazebo mpc_demo.launch"
 ```
+*NOTE:* this requires a graphical environment and tries to uses GPU, if using an NVIDIA GPU please make sure to use the [nvidia-container-toolkit](https://github.com/NVIDIA/nvidia-container-toolkit)
 
-*NOTE:* this requires a graphical environment and tries to uses GPU, if using an NVIDIA GPU please see [here](https://wiki.archlinux.org/title/Docker#Run_GPU_accelerated_Docker_containers_with_NVIDIA_GPUs) and make sure to use the [nvidia-container-toolkit](https://github.com/NVIDIA/nvidia-container-toolkit)
