@@ -46,6 +46,8 @@ private:
   float dist_weight_;
 
   MpcCmd prev_cmd_;
+  std::optional<casadi::DM> prev_mpc_traj_;
+  std::optional<casadi::DM> prev_mpc_cmd_;
   std::optional<KinematicMpc> mpc_;
   std::optional<nav_msgs::Odometry> latest_odom_;
   std::optional<nav_msgs::Path> path_;
