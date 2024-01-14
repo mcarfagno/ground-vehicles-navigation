@@ -19,12 +19,10 @@ The **src** directory contains the following ros packages:
   * `scripts/mpc_evaluator.py` -> A script that permorms the MPC evaluation. This script starts a ROS node that publishes the *Path* and *Obstacles* for the controller and logs its position over time to evaluate the error metrics.
   * `scripts/obstacle_spawner.py` -> A helper script to spawn gazebo entities from a template. 
   * `launch/mpc_demo.launch` -> Main launchfile that brings up the simulation environment, the control node and the evaluator script that performs the trial.
-  * `data/obstacles.csv` -> Obstacles used in the evaluation, with the form (x_pos, y_pos, radius) 
-  * `data/waypoints.csv` -> Waypoints used in the evaluation, with the form (x_pos, y_pos, heading) 
+  * `data/obstacles.csv` -> Obstacles used in the evaluation, with the form (x_pos, y_pos, radius) w.r.t **world**.
+  * `data/gps-waypoints.csv` -> Waypoints used in the evaluation, with the form (lat,lon) 
 
 The **docker** directory contains the dockerfile with all the dependencies in order to run the demo. See [Build with Docker] for more details.
-
-*note:* The assignment required a Path msg with GPS points. Path is specified for cartesian coordinates. I am making the assumption of the waypoints being their UTM cartesian projection in 'world' frame to be used with the world odometry.
 
 ## Controller Architecture
 

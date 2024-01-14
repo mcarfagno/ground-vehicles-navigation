@@ -17,8 +17,31 @@ import rospy
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 import matplotlib.pyplot as plt
 
+WORLD_LAT = 40.09302492080515
+WORLD_LON = -88.2357551253083
 WORLD_FRAME_ID = "world"
-OBS_RADIUS = 0.5
+
+
+def latlon_to_XY(lat0, lon0, lat1, lon1):
+    """
+    Convert latitude and longitude to global X, Y coordinates,
+    using an equirectangular projection.
+
+    X = meters east of lon0
+    Y = meters north of lat0
+
+    Sources: http://www.movable-type.co.uk/scripts/latlong.html
+                 https://github.com/MPC-Car/StochasticLC/blob/master/controller.py
+    """
+    R_earth = 6371000  # meters
+    delta_lat = math.radians(lat1 - lat0)
+    delta_lon = math.radians(lon1 - lon0)
+
+    lat_avg = 0.5 * (math.radians(lat1) + math.radians(lat0))
+    X = R_earth * delta_lon * math.cos(lat_avg)
+    Y = R_earth * delta_lat
+
+    return X, Y
 
 
 class MpcEvaluator(object):
@@ -28,18 +51,32 @@ class MpcEvaluator(object):
 
         rospack = rospkg.RosPack()
         mpc_gazebo_dir = rospack.get_path("mpc_gazebo")
-        self.waypoints = np.genfromtxt(
-            os.path.join(mpc_gazebo_dir, "./data/waypoints.csv"), delimiter=","
+
+        self.waypoints_gps = np.genfromtxt(
+            os.path.join(mpc_gazebo_dir, "./data/gps-waypoints.csv"), delimiter=","
         )
+        print(self.waypoints_gps)
         self.obstacles = np.genfromtxt(
             os.path.join(mpc_gazebo_dir, "./data/obstacles.csv"), delimiter=","
         )
+
+        # convert the GPS points into World frame
+        self.waypoints = np.zeros((len(self.waypoints_gps), 3))
+        for i in range(len(self.waypoints_gps)):
+            (world_x, world_y) = latlon_to_XY(
+                WORLD_LAT, WORLD_LON, self.waypoints_gps[i, 0], self.waypoints_gps[i, 1]
+            )
+            self.waypoints[i, 0] = world_x
+            self.waypoints[i, 1] = world_y
+        # self.waypoints[1:,2] = np.arctan2(np.diff(self.waypoints[:,0]), np.diff(self.waypoints[:,1]))
 
         self.broadcaster = tf.TransformBroadcaster()
         self.odometry_sub = rospy.Subscriber(
             "/gem/base_footprint/odom", Odometry, self.odom_cb, queue_size=1
         )
+
         self.path_pub = rospy.Publisher("/mpc/path", Path, queue_size=1)
+        self.path_viz_pub = rospy.Publisher("/mpc/path/viz", Path, queue_size=1)
         self.obstacles_pub = rospy.Publisher(
             "/mpc/obstacles", Detection3DArray, queue_size=1
         )
@@ -76,6 +113,7 @@ class MpcEvaluator(object):
         )
 
     def publish_path(self):
+        # Path in world frame (for rviz)
         msg = Path()
         msg.header.stamp = rospy.Time.now()
         msg.header.frame_id = WORLD_FRAME_ID
@@ -89,6 +127,18 @@ class MpcEvaluator(object):
             pose.pose.orientation.y = q[1]
             pose.pose.orientation.z = q[2]
             pose.pose.orientation.w = q[3]
+            msg.poses.append(pose)
+        self.path_viz_pub.publish(msg)
+
+        # Actual GPS waypoints (for mpc)
+        msg = Path()
+        msg.header.stamp = rospy.Time.now()
+        msg.header.frame_id = WORLD_FRAME_ID
+
+        for pt in self.waypoints_gps:
+            pose = PoseStamped()
+            pose.pose.position.x = pt[0]
+            pose.pose.position.y = pt[1]
             msg.poses.append(pose)
         self.path_pub.publish(msg)
 
@@ -187,23 +237,26 @@ class MpcEvaluator(object):
 
         # track error
         ax0 = fig.add_subplot(spec[0, :])
-        #plt.title("Tracking Error")
-        plt.plot([self.compute_cte(x) for x in self.mpc_pos_log], label="crosstrack error [m]")
+        # plt.title("Tracking Error")
+        plt.plot(
+            [self.compute_cte(x) for x in self.mpc_pos_log],
+            label="crosstrack error [m]",
+        )
         plt.axhline(y=1.0, color="crimson", linestyle="-", label="maximum cte")
-        plt.axhline(y=-1.0, color="crimson", linestyle="-",label="minimum cte")
+        plt.axhline(y=-1.0, color="crimson", linestyle="-", label="minimum cte")
         plt.xticks([])
         plt.legend()
 
         # speed
         ax1 = fig.add_subplot(spec[1, :])
-        #plt.title("Vehicle Speed")
+        # plt.title("Vehicle Speed")
         plt.plot([x[3] * 3.6 for x in self.mpc_pos_log], label="vehicle speed [km/h]")
-        plt.axhline(y=20.0, color="crimson", linestyle="-",label="target speed")
+        plt.axhline(y=20.0, color="crimson", linestyle="-", label="target speed")
         plt.xticks([])
         plt.legend()
 
         ax2 = fig.add_subplot(spec[2:, :])
-        #plt.title("Vehicle Trajectory")
+        # plt.title("Vehicle Trajectory")
         plt.plot(
             [x[0] for x in self.waypoints],
             [x[1] for x in self.waypoints],
