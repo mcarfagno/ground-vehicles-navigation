@@ -26,7 +26,7 @@ The **docker** directory contains the dockerfile with all the dependencies in or
 
 ## Controller Architecture
 
-The controller implements the following MPC problem:
+The controller implements the following MPC problem, adapted from [*1*]:
 
 $$
 \begin{aligned}
@@ -91,3 +91,6 @@ docker run -it --net=host --ipc=host --privileged \
     mpc-demo:latest \
     bash -c "roslaunch mpc_gazebo mpc_demo.launch"
 ```
+
+### References
+* [1][MPC Berkley - genesis path follower](https://github.com/MPC-Berkeley/genesis_path_follower/tree/master)

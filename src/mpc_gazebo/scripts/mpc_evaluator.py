@@ -171,7 +171,7 @@ class MpcEvaluator(object):
 
             marker.type = 3
             marker.action = 0
-            marker.id = idx+1
+            marker.id = idx
             marker.ns = "mpc/obs"
             marker.scale.x = o[2] * 2
             marker.scale.y = o[2] * 2
@@ -196,7 +196,7 @@ class MpcEvaluator(object):
             marker.header.frame_id = WORLD_FRAME_ID
             marker.header.stamp = rospy.Time.now()
 
-            marker.text = f"Obstacle \n ID {idx}"
+            marker.text = f"Obstacle \n ID {idx+1}"
             marker.type = 9
             marker.action = 0
             marker.id = len(self.obstacles) + idx
