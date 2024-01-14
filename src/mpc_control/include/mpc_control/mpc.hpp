@@ -16,6 +16,8 @@ static const char INITIAL_STATE_DICT_KEY[] = "x_initial_condition";
 static const char INITIAL_CONTROL_DICT_KEY[] = "u_initial_condition";
 static const char OPTIMIZED_CONTROL_DICT_KEY[] = "u_optimized";
 static const char OPTIMIZED_TRAJECTORY_DICT_KEY[] = "x_optimized";
+static const char CONTROL_GUESS_DICT_KEY[] = "u_initial_guess";
+static const char TRAJECTORY_GUESS_DICT_KEY[] = "x_initial_guess";
 
 /* @brief Kinematic model of the POLARIS_GEM vehicle
  * */

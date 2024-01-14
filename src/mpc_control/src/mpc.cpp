@@ -100,13 +100,13 @@ KinematicMpc::KinematicMpc(const KinematicModel &m, const MpcParameters &p,
     for (casadi_int j = 0; j < obstacles.size1(); j++) {
       // signed distance to the obstacle
       // (+ is outside the obstacle, - is inside).
-      auto d = sqrt(pow(x_dv(i+1) - obstacles(j, 0), 2) +
-                    pow(y_dv(i+1) - obstacles(j, 1), 2)) -
+      auto d = sqrt(pow(x_dv(i + 1) - obstacles(j, 0), 2) +
+                    pow(y_dv(i + 1) - obstacles(j, 1), 2)) -
                obstacles(j, 2);
-      
+
       // proximity cost
       cost += p.obstacle_avoidance_weight *
-              log(1 + exp(m.vehicle_width*0.5 + p.min_obstacle_margin - d));
+              log(1 + exp(m.vehicle_width * 0.5 + p.min_obstacle_margin - d));
     }
   }
 
@@ -158,8 +158,18 @@ std::optional<casadi::DMDict> KinematicMpc::solve(const casadi::DMDict &in) {
   opti_.set_value(reference_trajectory_, trajectory_reinterp);
   opti_.set_value(optimal_control_prev_, control_initial_condition);
 
-  // TODO: implement warm start: set the initial values of optimal_trajectory_
+  // implement warm start: set the initial values of optimal_trajectory_
   // and optimal_control_ decision variables to reduce iterations
+  if (in.count(CONTROL_GUESS_DICT_KEY)) {
+    const auto &control_initial_guess = in.at(CONTROL_GUESS_DICT_KEY);
+    opti_.set_initial(optimal_control_, control_initial_guess);
+  }
+
+  if (in.count(TRAJECTORY_GUESS_DICT_KEY)) {
+    const auto &trajectory_initial_guess = in.at(TRAJECTORY_GUESS_DICT_KEY);
+    opti_.set_initial(optimal_trajectory_, trajectory_initial_guess);
+  }
+
   try {
     auto solution = opti_.solve();
     casadi::DMDict out;
