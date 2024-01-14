@@ -42,7 +42,6 @@ MpcNode::MpcNode() : private_nh_("~") {
         path_ = *msg;
 
         // convert from GPS to World
-        // TODO: add heading
         std::for_each(path_.value().poses.begin(), path_.value().poses.end(),
                       [&](auto &p) {
                         auto xy = latlon_to_XY(
@@ -50,10 +49,6 @@ MpcNode::MpcNode() : private_nh_("~") {
                             p.pose.position.x, p.pose.position.y);
                         p.pose.position.x = xy.first;
                         p.pose.position.y = xy.second;
-                        p.pose.orientation.w = 1;
-                        p.pose.orientation.x = 0;
-                        p.pose.orientation.y = 0;
-                        p.pose.orientation.z = 0;
                       });
       });
   obstacles_sub_ = nh_.subscribe<vision_msgs::Detection3DArray>(
@@ -205,6 +200,11 @@ casadi::DM MpcNode::path_to_casadi(const nav_msgs::Path &path) const {
     tmp(i, casadi::Slice()) = {
         path.poses[i].pose.position.x, path.poses[i].pose.position.y,
         tf::getYaw(path.poses[i].pose.orientation), MPC_REF_SPEED};
+  }
+
+  // workaround for lack of heading from GPS path
+  for (std::size_t i = 1; i < tmp.size1(); i++) {
+    tmp(i, 2) = std::atan2(tmp(i, 1).scalar()-tmp(i-1, 1).scalar(), tmp(i, 0).scalar()-tmp(i-1, 0).scalar());
   }
 
   // Decelerate and stop at end of Path

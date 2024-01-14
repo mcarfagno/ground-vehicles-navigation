@@ -139,6 +139,10 @@ class MpcEvaluator(object):
             pose = PoseStamped()
             pose.pose.position.x = pt[0]
             pose.pose.position.y = pt[1]
+            pose.pose.orientation.x = 0.0
+            pose.pose.orientation.y = 0.0
+            pose.pose.orientation.z = 0.0
+            pose.pose.orientation.w = 1.0
             msg.poses.append(pose)
         self.path_pub.publish(msg)
 
@@ -167,7 +171,7 @@ class MpcEvaluator(object):
 
             marker.type = 3
             marker.action = 0
-            marker.id = idx
+            marker.id = idx+1
             marker.ns = "mpc/obs"
             marker.scale.x = o[2] * 2
             marker.scale.y = o[2] * 2
@@ -180,6 +184,10 @@ class MpcEvaluator(object):
             marker.pose.position.x = o[0]
             marker.pose.position.y = o[1]
             marker.pose.position.z = marker.scale.z * 0.5
+            marker.pose.orientation.x = 0.0
+            marker.pose.orientation.y = 0.0
+            marker.pose.orientation.z = 0.0
+            marker.pose.orientation.w = 1.0
 
             msg_viz.markers.append(marker)
 
