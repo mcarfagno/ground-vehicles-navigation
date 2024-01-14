@@ -17,6 +17,11 @@
 #include <visualization_msgs/Marker.h>
 
 namespace mpc {
+
+//start values
+static const float GPS_WORLD_ORIGIN_LAT = 40.09302492080515;
+static const float GPS_WORLD_ORIGIN_LON = -88.2357551253083;
+
 class MpcNode {
 public:
   MpcNode();
@@ -65,4 +70,16 @@ private:
 };
 
 } // namespace mpc
+
+/**
+ * @brief Converts latitude and longitude to global X, Y coordinates,
+ *        using an equirectangular projection.
+ *
+ *  @returns pair(meters east of lon0, meters north of lat0)
+ *
+ *  Sources: http://www.movable-type.co.uk/scripts/latlong.html
+ *           https://github.com/MPC-Car/StochasticLC/blob/master/controller.py
+ */
+std::pair<double,double> latlon_to_XY(double lat0, double lon0, double lat1, double lon1);
+
 #endif

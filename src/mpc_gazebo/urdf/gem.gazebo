@@ -212,19 +212,11 @@
     <referenceAltitude>220</referenceAltitude>
     <referenceHeading>90</referenceHeading>
 
-    <!--
     <offset>0 0 0</offset>
-    <drift>0.001 0.001 0.001</drift>
-    <gaussianNoise>0.05 0.05 0.05</gaussianNoise>
-    <velocityDrift>0.001 0.001 0.001</velocityDrift>
-    <velocityGaussianNoise>0.5 0.5 0.5</velocityGaussianNoise>
-    -->
-
-    <offset>0 0 0</offset>
-    <drift>0.001 0.001 0.001</drift>
-    <gaussianNoise>0.01 0.01 0.01</gaussianNoise>
+    <drift>0.0001 0.0001 0.0001</drift>
+    <gaussianNoise>0.001 0.001 0.001</gaussianNoise>
     <velocityDrift>0 0 0</velocityDrift>
-    <velocityGaussianNoise>0.05 0.05 0.05</velocityGaussianNoise>
+    <velocityGaussianNoise>0.005 0.005 0.005</velocityGaussianNoise>
 
     </plugin>
   </gazebo>

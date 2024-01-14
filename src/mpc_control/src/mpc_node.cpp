@@ -38,8 +38,24 @@ MpcNode::MpcNode() : private_nh_("~") {
       "/gem/base_footprint/odom", 1,
       [this](const nav_msgs::OdometryConstPtr &msg) { latest_odom_ = *msg; });
   path_sub_ = nh_.subscribe<nav_msgs::Path>(
-      "/mpc/path", 1,
-      [this](const nav_msgs::PathConstPtr &msg) { path_ = *msg; });
+      "/mpc/path", 1, [this](const nav_msgs::PathConstPtr &msg) {
+        path_ = *msg;
+
+        // convert from GPS to World
+        // TODO: add heading
+        std::for_each(path_.value().poses.begin(), path_.value().poses.end(),
+                      [&](auto &p) {
+                        auto xy = latlon_to_XY(
+                            GPS_WORLD_ORIGIN_LAT, GPS_WORLD_ORIGIN_LON,
+                            p.pose.position.x, p.pose.position.y);
+                        p.pose.position.x = xy.first;
+                        p.pose.position.y = xy.second;
+                        p.pose.orientation.w = 1;
+                        p.pose.orientation.x = 0;
+                        p.pose.orientation.y = 0;
+                        p.pose.orientation.z = 0;
+                      });
+      });
   obstacles_sub_ = nh_.subscribe<vision_msgs::Detection3DArray>(
       "/mpc/obstacles", 1,
       [this](const vision_msgs::Detection3DArrayConstPtr &msg) {
@@ -74,13 +90,12 @@ void MpcNode::run() {
       params.control_rate_weights = {acc_rate_weight_, steer_rate_weight_};
       params.min_obstacle_margin = obs_safety_dist_;
       params.obstacle_avoidance_weight = dist_weight_;
-
-
+      auto obs = obstacles_to_casadi(obstacles_.value());
+      auto path = path_to_casadi(path_.value());
       // NOTE: I am assuming path and obstacles not changing
       // this is mostly due to having pre-fixed sizes for the obstacles
       // if the number of obstacles changes the problem must be rebuilt
-      mpc_ = KinematicMpc(model, params, path_to_casadi(path_.value()),
-                          obstacles_to_casadi(obstacles_.value()));
+      mpc_ = KinematicMpc(model, params, path, obs);
     }
 
     // check for goal
@@ -95,7 +110,7 @@ void MpcNode::run() {
       publish_mpc_cmd(0.0, 0.0);
 
       prev_cmd_ = {0.0, 0.0};
-      prev_mpc_traj_= std::nullopt;
+      prev_mpc_traj_ = std::nullopt;
       prev_mpc_cmd_ = std::nullopt;
       continue;
     }
@@ -105,14 +120,14 @@ void MpcNode::run() {
     mpc_dict_in[INITIAL_STATE_DICT_KEY] =
         odometry_to_casadi(latest_odom_.value());
     mpc_dict_in[INITIAL_CONTROL_DICT_KEY] = cmd_to_casadi(prev_cmd_);
-    
+
     // use the previous solution to seed the solution
     // for the next step
-    if (prev_mpc_cmd_.has_value()){
-    	mpc_dict_in[CONTROL_GUESS_DICT_KEY] = prev_mpc_cmd_.value();
+    if (prev_mpc_cmd_.has_value()) {
+      mpc_dict_in[CONTROL_GUESS_DICT_KEY] = prev_mpc_cmd_.value();
     }
-    if (prev_mpc_traj_.has_value()){
-    	mpc_dict_in[TRAJECTORY_GUESS_DICT_KEY] = prev_mpc_traj_.value();
+    if (prev_mpc_traj_.has_value()) {
+      mpc_dict_in[TRAJECTORY_GUESS_DICT_KEY] = prev_mpc_traj_.value();
     }
 
     auto result = mpc_->solve(mpc_dict_in);
@@ -123,13 +138,13 @@ void MpcNode::run() {
                    ctrl.acceleration * 1. / rate_;
       publish_mpc_cmd(speed, ctrl.steer);
       publish_rviz_markers(result.value()[OPTIMIZED_TRAJECTORY_DICT_KEY]);
-      prev_mpc_cmd_ =result.value()[OPTIMIZED_CONTROL_DICT_KEY];
-      prev_mpc_traj_ =result.value()[OPTIMIZED_TRAJECTORY_DICT_KEY];
+      prev_mpc_cmd_ = result.value()[OPTIMIZED_CONTROL_DICT_KEY];
+      prev_mpc_traj_ = result.value()[OPTIMIZED_TRAJECTORY_DICT_KEY];
       prev_cmd_ = ctrl;
     } else {
       publish_mpc_cmd(0.0, 0.0);
       prev_cmd_ = {0.0, 0.0};
-      prev_mpc_traj_= std::nullopt;
+      prev_mpc_traj_ = std::nullopt;
       prev_mpc_cmd_ = std::nullopt;
     }
 
@@ -213,3 +228,17 @@ MpcCmd MpcNode::casadi_to_cmd(casadi::DM &in) const {
 }
 
 } // namespace mpc
+
+std::pair<double, double> latlon_to_XY(double lat0, double lon0, double lat1,
+                                       double lon1) {
+  auto R_earth = 6371000; // meters
+  auto delta_lat = (lat1 - lat0) * (M_PI / 180);
+
+  auto delta_lon = (lon1 - lon0) * (M_PI / 180);
+
+  auto lat_avg = 0.5 * (lat1 * (M_PI / 180) + lat0 * (M_PI / 180));
+  auto X = R_earth * delta_lon * std::cos(lat_avg);
+  auto Y = R_earth * delta_lat;
+
+  return std::make_pair(X, Y);
+}
