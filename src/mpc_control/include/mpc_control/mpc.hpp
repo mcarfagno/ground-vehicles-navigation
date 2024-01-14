@@ -51,7 +51,7 @@ struct MpcParameters {
   double DT = 0.2;                   // [s]
   double min_obstacle_margin = 0.25; // [m]
   double obstacle_avoidance_weight = 5.0;
-  std::vector<double> state_error_weights = {1.0, 1.0, 0.0, 1.0};
+  std::vector<double> state_error_weights = {1.0, 1.0, 0.1, 1.0};
   std::vector<double> control_rate_weights = {10.0, 100.0};
 
   // IPOPT Settings

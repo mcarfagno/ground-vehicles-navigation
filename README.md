@@ -72,7 +72,6 @@ The final controller has been tuned with this set of parameters:
 The parameters were tuned to satisfy the requirement of **keeping the tracking error within 1m** while mantaining a satisfactory obstacle avoidance performance and a smooth, oscillation-free trajectory.
 
 <a href="results"><img src="./images/results.png" width="720"></a>
-*note:* I have found difficult to adjust the weights to keep the error within the bounds while keeping avoidance relibale for some obtacles (wich require more deviation). An option was to shrink/move those obstacles but I decided against it but rather try to find a trade-off and showcase better avoidance. 
 
 ### Build with Docker
 
