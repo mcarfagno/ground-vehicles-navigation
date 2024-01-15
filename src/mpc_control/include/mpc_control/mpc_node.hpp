@@ -2,9 +2,10 @@
 #define MPC_CONTROL__MPC_NODE_HPP_
 
 #include "mpc_control/mpc.hpp"
+#include <ackermann_msgs/AckermannDrive.h>
+#include <geometry_msgs/Point.h>
 #include <memory>
 #include <nav_msgs/Odometry.h>
-#include <geometry_msgs/Point.h>
 #include <nav_msgs/Path.h>
 #include <optional>
 #include <ros/ros.h>
@@ -12,13 +13,13 @@
 #include <utility>
 #include <vector>
 #include <vision_msgs/Detection3DArray.h>
-#include <ackermann_msgs/AckermannDrive.h>
-#include <visualization_msgs/MarkerArray.h>
 #include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
 
 namespace mpc {
 
-//start values
+// World origin in Lat/Lon
+// TODO: this should be a rosparam
 static const float GPS_WORLD_ORIGIN_LAT = 40.09302492080515;
 static const float GPS_WORLD_ORIGIN_LON = -88.2357551253083;
 
@@ -80,6 +81,7 @@ private:
  *  Sources: http://www.movable-type.co.uk/scripts/latlong.html
  *           https://github.com/MPC-Car/StochasticLC/blob/master/controller.py
  */
-std::pair<double,double> latlon_to_XY(double lat0, double lon0, double lat1, double lon1);
+std::pair<double, double> latlon_to_XY(double lat0, double lon0, double lat1,
+                                       double lon1);
 
 #endif

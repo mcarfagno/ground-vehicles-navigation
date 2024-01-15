@@ -1,7 +1,6 @@
 # Ground vehicles navigation
 
 <a href="results"><img src="./images/banner.gif" width="600"></a>
-See full [video](./mpc_demo.mp4)
 
 ## Abstract
 
@@ -19,12 +18,28 @@ The **src** directory contains the following ros packages:
   * `scripts/mpc_evaluator.py` -> A script that permorms the MPC evaluation. This script starts a ROS node that publishes the *Path* and *Obstacles* for the controller and logs its position over time to evaluate the error metrics.
   * `scripts/obstacle_spawner.py` -> A helper script to spawn gazebo entities from a template. 
   * `launch/mpc_demo.launch` -> Main launchfile that brings up the simulation environment, the control node and the evaluator script that performs the trial.
-  * `data/obstacles.csv` -> Obstacles used in the evaluation, with the form (x_pos, y_pos, radius) w.r.t **world**.
-  * `data/gps-waypoints.csv` -> Waypoints used in the evaluation, with the form (lat,lon) 
+  * `data/obstacles.csv` -> Obstacles used in the evaluation, with the format (x_pos, y_pos, radius) w.r.t **world**.
+  * `data/gps-waypoints.csv` -> Waypoints used in the evaluation, with the format (lat,lon)
 
 The **docker** directory contains the dockerfile with all the dependencies in order to run the demo. See [Build with Docker] for more details.
 
 ## Controller Architecture
+
+The Model predictive Controller has been implemented in a ROS node that can be launched with:
+```
+roslaunch mpc_control polaris_gem_mpc.launch
+```
+
+#### Subscribed Topics
+
+* `/gem/base_footprint/odom` (nav_msgs/Odometry) -> Odometry w.r.t **world** frame.
+* `/mpc/path` (nav_msgs/Path) -> Reprenst a set of GPS coordinates, Pose X and Y coordinates encode Latitude and Longitude
+* `/mpc/obstacles` (vision_msgs/Detection3DArray) -> Represent a set of obstacles, at the moment only the bbox x-size is used to encode the obstacle radius
+
+#### Published Topics
+
+* `/gem/ackermann_cmd` (ackermann_msgs/AckermannDrive) -> Speed and Steering command output.
+* `/mpc/markers` (vision_msgs/MarkerArray) -> Rviz markers that preview the controllers predicted optimal state trajectory. 
 
 The controller implements the following MPC problem, adapted from [*1*]:
 
@@ -54,7 +69,7 @@ The vehicle is modelled in the controller the *bicycle model* kinematic equation
 
 ## Results
 
-The final controller has been tuned with this set of parameters:
+The final controller has been tuned with the following set of parameters:
 
 | Param | Value |
 | --- | --- |
@@ -69,7 +84,7 @@ The final controller has been tuned with this set of parameters:
 | `steer_rate_weight` | 100.0 |
 | `obstacle_distance_weight` | 7.0 |
 
-The parameters were tuned to satisfy the requirement of **keeping the tracking error within 1m** while mantaining a satisfactory obstacle avoidance performance and a smooth, oscillation-free trajectory.
+The parameters were tuned to satisfy the requirement of **keeping the tracking error within 1m** while mantaining a satisfactory obstacle avoidance performance and a oscillation-free trajectory.
 
 <a href="results"><img src="./images/results.png" width="720"></a>
 

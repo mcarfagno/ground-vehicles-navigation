@@ -1,21 +1,18 @@
 #!/usr/bin/env python3
 
-from visualization_msgs.msg import Marker, MarkerArray
-from nav_msgs.msg import Odometry, Path
-from geometry_msgs.msg import PoseStamped
-from vision_msgs.msg import Detection3D, Detection3DArray, ObjectHypothesisWithPose
-
-import os
-import csv
 import math
-import numpy as np
-from numpy import linalg as la
-import tf
+import os
 
+import matplotlib.pyplot as plt
+import numpy as np
 import rospkg
 import rospy
+import tf
+from geometry_msgs.msg import PoseStamped
+from nav_msgs.msg import Odometry, Path
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
-import matplotlib.pyplot as plt
+from vision_msgs.msg import Detection3D, Detection3DArray
+from visualization_msgs.msg import Marker, MarkerArray
 
 WORLD_LAT = 40.09302492080515
 WORLD_LON = -88.2357551253083
