@@ -1,7 +1,6 @@
 #include "mpc_control/mpc_node.hpp"
 
 namespace mpc {
-// TODO(marcello): implement node
 MpcNode::MpcNode() : private_nh_("~") {
 
   // variables
@@ -204,7 +203,8 @@ casadi::DM MpcNode::path_to_casadi(const nav_msgs::Path &path) const {
 
   // workaround for lack of heading from GPS path
   for (std::size_t i = 1; i < tmp.size1(); i++) {
-    tmp(i, 2) = std::atan2(tmp(i, 1).scalar()-tmp(i-1, 1).scalar(), tmp(i, 0).scalar()-tmp(i-1, 0).scalar());
+    tmp(i, 2) = std::atan2(tmp(i, 1).scalar() - tmp(i - 1, 1).scalar(),
+                           tmp(i, 0).scalar() - tmp(i - 1, 0).scalar());
   }
 
   // Decelerate and stop at end of Path

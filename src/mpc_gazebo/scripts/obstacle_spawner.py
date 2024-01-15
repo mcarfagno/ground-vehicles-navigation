@@ -1,11 +1,11 @@
-import os
-from gazebo_ros import gazebo_interface
-from tf.transformations import quaternion_from_euler
-from geometry_msgs.msg import Pose, Quaternion, Point
-import rospy
-import time
-from typing import Iterable
 import csv
+import os
+import time
+
+import rospy
+from gazebo_ros import gazebo_interface
+from geometry_msgs.msg import Point, Pose, Quaternion
+from tf.transformations import quaternion_from_euler
 
 
 # adapted from https://nozomi.sk/spawn-objects-in-gazebo-of-ros-kinetic-melodic-python-2-7/

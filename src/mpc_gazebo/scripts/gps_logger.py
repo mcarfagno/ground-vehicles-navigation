@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 
-import rospy
-import numpy as np
 import atexit
-import tf
 from os.path import expanduser
 from time import gmtime, strftime
+
+import rospy
 from sensor_msgs.msg import NavSatFix
 
 # adapted from https://gitlab.engr.illinois.edu/gemillins/POLARIS_GEM_e2/-/blob/main/polaris_gem_simulator/waypoint_logger/scripts/waypoint_logger.py
