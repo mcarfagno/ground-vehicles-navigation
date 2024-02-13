@@ -75,7 +75,7 @@ The final controller has been tuned with the following set of parameters:
 | --- | --- |
 | `control_horizon_len` | 20 |
 | `time_step` | 0.1 |
-| `min_obstacle_margin ` | 0.25 |
+| `obstacle_margin ` | 0.25 |
 | `x_pos_error_weight` | 1.0 |
 | `y_pos_error_weight` | 1.0 |
 | `heading_pos_error_weight` | 0.1 |

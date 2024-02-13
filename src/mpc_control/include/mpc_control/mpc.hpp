@@ -9,6 +9,7 @@
 
 namespace mpc {
 
+static const double STIFFNESS = 100;
 static const double MPC_REF_SPEED = 20 / 3.6; // [m/s] -> 20km/h
 static const char OBSTACLES_DICT_KEY[] = "obstacles";
 static const char TRAJECTORY_DICT_KEY[] = "ref_trajectory";
@@ -48,8 +49,8 @@ struct KinematicModel {
 struct MpcParameters {
   // Mpc problem settings
   std::size_t N = 10;
-  double DT = 0.2;                   // [s]
-  double min_obstacle_margin = 0.25; // [m]
+  double DT = 0.2;               // [s]
+  double obstacle_margin = 0.25; // [m]
   double obstacle_avoidance_weight = 5.0;
   std::vector<double> state_error_weights = {1.0, 1.0, 0.1, 1.0};
   std::vector<double> control_rate_weights = {10.0, 100.0};
