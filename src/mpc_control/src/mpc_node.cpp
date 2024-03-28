@@ -78,11 +78,10 @@ void MpcNode::run() {
       auto params = MpcParameters();
       params.DT = 1. / rate_;
       params.N = mpc_horizon_steps_;
-      params.min_obstacle_margin = obs_safety_dist_;
+      params.obstacle_margin = obs_safety_dist_;
       params.state_error_weights = {x_weight_, y_weight_, yaw_weight_,
                                     speed_weight_};
       params.control_rate_weights = {acc_rate_weight_, steer_rate_weight_};
-      params.min_obstacle_margin = obs_safety_dist_;
       params.obstacle_avoidance_weight = dist_weight_;
       auto obs = obstacles_to_casadi(obstacles_.value());
       auto path = path_to_casadi(path_.value());

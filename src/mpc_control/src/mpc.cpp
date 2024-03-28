@@ -105,8 +105,15 @@ KinematicMpc::KinematicMpc(const KinematicModel &m, const MpcParameters &p,
                obstacles(j, 2);
 
       // proximity cost
+      // the margin represent the distance beyond which the vehicle
+      // is fully clear from the obstacle
+      // * This term goes to 0 for d > margin;
+      // * higher the stiffness, faster it decreases to 0
+      const auto margin = m.vehicle_width * 0.5 + p.obstacle_margin;
       cost += p.obstacle_avoidance_weight *
-              log(1 + exp(m.vehicle_width * 0.5 + p.min_obstacle_margin - d));
+              log(1 + exp(STIFFNESS * (margin - d))) / STIFFNESS;
+
+      // TODO(marcello): enforce minum distance from obstacle
     }
   }
 
