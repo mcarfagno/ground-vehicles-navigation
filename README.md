@@ -4,8 +4,8 @@
 
 This repo contains a demo of a model predictive controller, which given a specific GPS path, is able to follow it with while able to avoid obstacles.
 
-This Demo is built on top of [POLARIS_GEM_e2 simulator](https://gitlab.engr.illinois.edu/gemillins/POLARIS_GEM_e2).
-The MPC is implemented using the [CasADi](https://web.casadi.org/docs/) framework, using [1] as reference.
+* This Demo is built on top of [POLARIS_GEM_e2 simulator](https://gitlab.engr.illinois.edu/gemillins/POLARIS_GEM_e2).
+* The MPC is implemented using the [CasADi](https://web.casadi.org/docs/) framework, using [1] as reference.
 
 ## Project Structure
 
@@ -69,6 +69,8 @@ The vehicle is modelled in the controller the *bicycle model* kinematic equation
 ## Instructions
 
 For best result see the Docker section below. 
+
+This demo is based on ROS [noetic](https://wiki.ros.org/noetic/Installation).
 
 You can run this in your ros workspce with the following (notable) dependencies
 * [POLARIS_GEM_e2 simulator](https://gitlab.engr.illinois.edu/gemillins/POLARIS_GEM_e2).
