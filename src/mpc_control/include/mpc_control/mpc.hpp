@@ -9,7 +9,7 @@
 
 namespace mpc {
 
-static const double STIFFNESS = 100;
+static const double STIFFNESS = 10;
 static const double MPC_REF_SPEED = 20 / 3.6; // [m/s] -> 20km/h
 static const char OBSTACLES_DICT_KEY[] = "obstacles";
 static const char TRAJECTORY_DICT_KEY[] = "ref_trajectory";
