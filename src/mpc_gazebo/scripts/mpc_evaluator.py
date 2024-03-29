@@ -65,7 +65,6 @@ class MpcEvaluator(object):
             )
             self.waypoints[i, 0] = world_x
             self.waypoints[i, 1] = world_y
-        # self.waypoints[1:,2] = np.arctan2(np.diff(self.waypoints[:,0]), np.diff(self.waypoints[:,1]))
 
         self.broadcaster = tf.TransformBroadcaster()
         self.odometry_sub = rospy.Subscriber(
@@ -103,7 +102,12 @@ class MpcEvaluator(object):
                 msg.pose.pose.position.y,
                 msg.pose.pose.position.z,
             ),
-            tf.transformations.quaternion_from_euler(0, 0, yaw),
+            (
+                msg.pose.pose.orientation.x,
+                msg.pose.pose.orientation.y,
+                msg.pose.pose.orientation.z,
+                msg.pose.pose.orientation.w,
+            ),
             rospy.Time.now(),
             msg.child_frame_id,
             msg.header.frame_id,
@@ -119,11 +123,10 @@ class MpcEvaluator(object):
             pose = PoseStamped()
             pose.pose.position.x = pt[0]
             pose.pose.position.y = pt[1]
-            q = quaternion_from_euler(0, 0, pt[2])
-            pose.pose.orientation.x = q[0]
-            pose.pose.orientation.y = q[1]
-            pose.pose.orientation.z = q[2]
-            pose.pose.orientation.w = q[3]
+            pose.pose.orientation.x = 0.0
+            pose.pose.orientation.y = 0.0
+            pose.pose.orientation.z = 0.0
+            pose.pose.orientation.w = 1.0
             msg.poses.append(pose)
         self.path_viz_pub.publish(msg)
 
@@ -231,7 +234,6 @@ class MpcEvaluator(object):
 
         return np.dot(vec_target_2_front.T, front_axle_vec_rot_90)
 
-    # TODO: plot MPC results at the end of trial
     def plot(self):
         # downsaple a bit, the log is very long and lags
         self.mpc_pos_log = self.mpc_pos_log[::10]
@@ -295,11 +297,11 @@ class MpcEvaluator(object):
                     self.get_nearest_index(self.mpc_pos_log[-1])
                     >= self.waypoints.shape[0] - 3
                 ):
-                    rospy.loginfo(f"Goal Reached")
+                    rospy.loginfo("Goal Reached")
                     self.odometry_sub.unregister()
                     self.plot()
 
-                    rospy.loginfo(f"Saving Image to")
+                    rospy.loginfo("Saving Image")
                     rospy.signal_shutdown("Done")
 
             self.publish_path()
