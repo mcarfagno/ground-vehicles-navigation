@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- TODO: add weights -->
+  <arg name="rate" default="8.0"/>
+  <arg name="control_horizon" default="12"/>
+  <arg name="safety_distance" default="0.5"/>
+  <arg name="obstacle_weight" default="5.0"/>
+
+  <node name="mppi_node" pkg="mppi_control" type="mppi" respawn="false" output="screen">
+    <param name="rate" value="$(arg rate)"/>
+    <param name="control_horizon_len" value="$(arg control_horizon)"/>
+    <param name="obstacles_safety_distance" value="$(arg safety_distance)"/>
+    <param name="obstacle_distance_weight" value="$(arg obstacle_weight)"/>
+  </node>
+          
+</launch>
