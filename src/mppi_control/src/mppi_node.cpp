@@ -1,7 +1,7 @@
 #include "mppi_control/mppi_node.hpp"
 
 namespace mpppi {
-MppiNode :MppiNode () : private_nh_("~") {
+MppiNode : MppiNode() : private_nh_("~") {
 
   // variables
   path_ = std::nullopt;
@@ -139,7 +139,7 @@ void MpcNode::publish_mpc_cmd(double speed, double steer) {
 void MpcNode::publish_rviz_markers(const casadi::DM &predicted_state_traj) {
   visualization_msgs::MarkerArray marker_arr;
 
-  // 1- publish optimized state x and y
+  // 1- publish optimized trajectory
   visualization_msgs::Marker marker;
   marker.header.frame_id = "world";
   marker.header.stamp = ros::Time::now();
@@ -162,30 +162,33 @@ void MpcNode::publish_rviz_markers(const casadi::DM &predicted_state_traj) {
     marker.points.push_back(point);
   }
   marker_arr.markers.push_back(marker);
+
+  // TODO: 2- publish sampled trajectories
   viz_pub_.publish(std::move(marker_arr));
 }
 
-Eigen::Vector4f MppiNode::odometry_to_matrix(const nav_msgs::Odometry &odom) const {
-  Eigen::Vector4f state(odom.pose.pose.position.x, odom.pose.pose.position.y,
-       tf::getYaw(odom.pose.pose.orientation),
-       std::hypot(odom.twist.twist.linear.x, odom.twist.twist.linear.y));
+Eigen::Vector4f
+MppiNode::odometry_to_matrix(const nav_msgs::Odometry &odom) const {
+  Eigen::Vector4f state(
+      odom.pose.pose.position.x, odom.pose.pose.position.y,
+      tf::getYaw(odom.pose.pose.orientation),
+      std::hypot(odom.twist.twist.linear.x, odom.twist.twist.linear.y));
   return state;
 }
 
 Eigen::MatrixXf MppiNode::path_to_matrix(const nav_msgs::Path &path) const {
 
   Eigen::MatrixXf tmp;
-    tmp.resize(path.poses.size(), 4);
+  tmp.resize(path.poses.size(), 4);
   for (std::size_t i = 0; i < path.poses.size(); i++) {
-    tmp.row(i) = {
-        path.poses[i].pose.position.x, path.poses[i].pose.position.y,
-        tf::getYaw(path.poses[i].pose.orientation), MPPI_REF_SPEED};
+    tmp.row(i) = {path.poses[i].pose.position.x, path.poses[i].pose.position.y,
+                  tf::getYaw(path.poses[i].pose.orientation), MPPI_REF_SPEED};
   }
 
   // workaround for lack of heading from GPS path
   for (std::size_t i = 1; i < tmp.rows(); i++) {
-    tmp(i, 2) = std::atan2(tmp(i, 1) - tmp(i - 1, 1),
-                           tmp(i, 0) - tmp(i - 1, 0));
+    tmp(i, 2) =
+        std::atan2(tmp(i, 1) - tmp(i - 1, 1), tmp(i, 0) - tmp(i - 1, 0));
   }
 
   // Decelerate and stop at end of Path
@@ -196,16 +199,16 @@ Eigen::MatrixXf MppiNode::path_to_matrix(const nav_msgs::Path &path) const {
 Eigen::MatrixXf
 MppiNode::obstacles_to_matrix(const vision_msgs::Detection3DArray &obs) const {
   Eigen::MatrixXf tmp;
-    tmp.resize(obs.detections.size(), 3);
+  tmp.resize(obs.detections.size(), 3);
   for (std::size_t i = 0; i < obs.detections.size(); i++) {
     tmp.row(i) = {obs.detections[i].bbox.center.position.x,
-                               obs.detections[i].bbox.center.position.y,
-                               obs.detections[i].bbox.size.x};
+                  obs.detections[i].bbox.center.position.y,
+                  obs.detections[i].bbox.size.x};
   }
   return tmp;
 }
 
-} // namespace mppi
+} // namespace mpppi
 
 std::pair<double, double> latlon_to_XY(double lat0, double lon0, double lat1,
                                        double lon1) {

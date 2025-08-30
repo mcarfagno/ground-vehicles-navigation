@@ -26,7 +26,7 @@ static const float GPS_WORLD_ORIGIN_LON = -88.2357551253083;
 class MppiNode {
 public:
   MppiNode();
-  ~MppiNode(){};
+  ~MppiNode() {};
   void run();
 
 private:
@@ -55,7 +55,7 @@ private:
   MpcCmd prev_cmd_;
 
   // TODO: casadi -> eigen?
-  //std::optional<casadi::DM> prev_mpc_traj_;
+  // std::optional<casadi::DM> prev_mpc_traj_;
   std::optional<casadi::DM> prev_mpc_cmd_;
   std::optional<Mppi> mppi_;
 
@@ -72,7 +72,7 @@ private:
   void publish_rviz_markers(const casadi::DM &predicted_state_traj);
 };
 
-} // namespace mpc
+} // namespace mppi
 
 /**
  * @brief Converts latitude and longitude to global X, Y coordinates,

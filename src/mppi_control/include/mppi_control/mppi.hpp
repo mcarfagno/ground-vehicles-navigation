@@ -1,11 +1,11 @@
 #ifndef MPPI_CONTROLLER__MPPI_HPP_
 #define MPPI_CONTROLLER__MPPI_HPP_
 
+#include <Eigen/Dense>
 #include <chrono>
 #include <iostream>
 #include <memory>
 #include <vector>
-#include <Eigen/Dense>
 
 namespace mppi {
 
@@ -21,8 +21,9 @@ private:
    * @brief reinterpolates a trajectory to one of the correct
    * size and starting point
    * */
-  Eigen::MatrixXf reinterpolate_reference_trajectory(const Eigen::MatrixXf  &traj,
-                                                 const Eigen::Vector4d  &x) const;
+  Eigen::MatrixXf
+  reinterpolate_reference_trajectory(const Eigen::MatrixXf &traj,
+                                     const Eigen::Vector4d &x) const;
 
 public:
   explicit MPPI();
