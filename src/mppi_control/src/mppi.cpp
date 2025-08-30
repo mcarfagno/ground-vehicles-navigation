@@ -10,7 +10,6 @@ KinematicMpc::KinematicMpc(const KinematicModel &m, const MpcParameters &p,
 }
 
 
-// TODO: test this standalone...
 Eigen::MatrixXf
 MPPI::reinterpolate_reference_trajectory(const Eigen::MatrixXf  &traj,
                                                  const Eigen::Vector4d  &x) const {
@@ -65,8 +64,6 @@ MPPI::reinterpolate_reference_trajectory(const Eigen::MatrixXf  &traj,
   const auto fit_v = SplineFitting1D::Interpolate(traj.col(3).transpose(), 2, cdist);
   Spline1D v_intp(fit_v);
 
-  std::cout<<"ok so far?"<<std::endl;
-  
   // interpolate at target points
   for (std::size_t i = 0; i < N_; i++) {
     waypoints(i, 0) = x_intp(intp_pts(i)).coeff(0);;

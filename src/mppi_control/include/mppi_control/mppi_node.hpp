@@ -64,12 +64,9 @@ private:
   std::optional<vision_msgs::Detection3DArray> obstacles_;
 
   // TODO: casadi -> eigen?
-  casadi::DM odometry_to_casadi(const nav_msgs::Odometry &odom) const;
-  casadi::DM cmd_to_casadi(const MpcCmd &cmd) const;
-  casadi::DM path_to_casadi(const nav_msgs::Path &path) const;
-  casadi::DM
-  obstacles_to_casadi(const vision_msgs::Detection3DArray &obs) const;
-  MpcCmd casadi_to_cmd(casadi::DM &in) const;
+  Eigen::Vector4f odometry_to_matrix(const nav_msgs::Odometry &odom) const;
+  Eigen::MatrixXf
+  obstacles_to_matrix(const vision_msgs::Detection3DArray &obs) const;
 
   void publish_mppi_cmd(double speed, double steer);
   void publish_rviz_markers(const casadi::DM &predicted_state_traj);

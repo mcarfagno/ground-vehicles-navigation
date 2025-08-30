@@ -1,7 +1,7 @@
-#include "mpc_control/mpc_node.hpp"
+#include "mppi_control/mppi_node.hpp"
 
-namespace mpc {
-MpcNode::MpcNode() : private_nh_("~") {
+namespace mpppi {
+MppiNode :MppiNode () : private_nh_("~") {
 
   // variables
   path_ = std::nullopt;
@@ -57,8 +57,8 @@ MpcNode::MpcNode() : private_nh_("~") {
       });
 }
 
-void MpcNode::run() {
-  ROS_INFO("MPC controller node start");
+void MppiNode::run() {
+  ROS_INFO("MPPI controller node start");
   ros::Rate loop_rate(rate_);
   while (ros::ok()) {
     ros::spinOnce();
@@ -66,29 +66,13 @@ void MpcNode::run() {
     // check for topics
     if (!obstacles_.has_value() || !path_.has_value() ||
         !latest_odom_.has_value()) {
-      ROS_WARN("MPC waiting for necessary topics.");
+      ROS_WARN("MPPI waiting for necessary topics.");
       loop_rate.sleep();
       continue;
     }
 
-    // create mpc instance
-    if (!mpc_.has_value()) {
-      ROS_INFO("Creating CasADi problem instance");
-      auto model = KinematicModel();
-      auto params = MpcParameters();
-      params.DT = 1. / rate_;
-      params.N = mpc_horizon_steps_;
-      params.obstacle_margin = obs_safety_dist_;
-      params.state_error_weights = {x_weight_, y_weight_, yaw_weight_,
-                                    speed_weight_};
-      params.control_rate_weights = {acc_rate_weight_, steer_rate_weight_};
-      params.obstacle_avoidance_weight = dist_weight_;
-      auto obs = obstacles_to_casadi(obstacles_.value());
-      auto path = path_to_casadi(path_.value());
-      // NOTE: I am assuming path and obstacles not changing
-      // this is mostly due to having pre-fixed sizes for the obstacles
-      // if the number of obstacles changes the problem must be rebuilt
-      mpc_ = KinematicMpc(model, params, path, obs);
+    // create mppi instance
+    if (!mppi_.has_value()) {
     }
 
     // check for goal
@@ -181,29 +165,27 @@ void MpcNode::publish_rviz_markers(const casadi::DM &predicted_state_traj) {
   viz_pub_.publish(std::move(marker_arr));
 }
 
-casadi::DM MpcNode::odometry_to_casadi(const nav_msgs::Odometry &odom) const {
-  return casadi::DM(
-      {odom.pose.pose.position.x, odom.pose.pose.position.y,
+Eigen::Vector4f MppiNode::odometry_to_matrix(const nav_msgs::Odometry &odom) const {
+  Eigen::Vector4f state(odom.pose.pose.position.x, odom.pose.pose.position.y,
        tf::getYaw(odom.pose.pose.orientation),
-       std::hypot(odom.twist.twist.linear.x, odom.twist.twist.linear.y)});
+       std::hypot(odom.twist.twist.linear.x, odom.twist.twist.linear.y));
+  return state;
 }
 
-casadi::DM MpcNode::cmd_to_casadi(const MpcCmd &cmd) const {
-  return casadi::DM({cmd.acceleration, cmd.steer});
-}
+Eigen::MatrixXf MppiNode::path_to_matrix(const nav_msgs::Path &path) const {
 
-casadi::DM MpcNode::path_to_casadi(const nav_msgs::Path &path) const {
-  auto tmp = casadi::DM(path.poses.size(), 4);
+  Eigen::MatrixXf tmp;
+    tmp.resize(path.poses.size(), 4);
   for (std::size_t i = 0; i < path.poses.size(); i++) {
-    tmp(i, casadi::Slice()) = {
+    tmp.row(i) = {
         path.poses[i].pose.position.x, path.poses[i].pose.position.y,
-        tf::getYaw(path.poses[i].pose.orientation), MPC_REF_SPEED};
+        tf::getYaw(path.poses[i].pose.orientation), MPPI_REF_SPEED};
   }
 
   // workaround for lack of heading from GPS path
-  for (std::size_t i = 1; i < tmp.size1(); i++) {
-    tmp(i, 2) = std::atan2(tmp(i, 1).scalar() - tmp(i - 1, 1).scalar(),
-                           tmp(i, 0).scalar() - tmp(i - 1, 0).scalar());
+  for (std::size_t i = 1; i < tmp.rows(); i++) {
+    tmp(i, 2) = std::atan2(tmp(i, 1) - tmp(i - 1, 1),
+                           tmp(i, 0) - tmp(i - 1, 0));
   }
 
   // Decelerate and stop at end of Path
@@ -211,22 +193,19 @@ casadi::DM MpcNode::path_to_casadi(const nav_msgs::Path &path) const {
   return tmp;
 }
 
-casadi::DM
-MpcNode::obstacles_to_casadi(const vision_msgs::Detection3DArray &obs) const {
-  auto tmp = casadi::DM(obs.detections.size(), 3);
+Eigen::MatrixXf
+MppiNode::obstacles_to_matrix(const vision_msgs::Detection3DArray &obs) const {
+  Eigen::MatrixXf tmp;
+    tmp.resize(obs.detections.size(), 3);
   for (std::size_t i = 0; i < obs.detections.size(); i++) {
-    tmp(i, casadi::Slice()) = {obs.detections[i].bbox.center.position.x,
+    tmp.row(i) = {obs.detections[i].bbox.center.position.x,
                                obs.detections[i].bbox.center.position.y,
                                obs.detections[i].bbox.size.x};
   }
   return tmp;
 }
 
-MpcCmd MpcNode::casadi_to_cmd(casadi::DM &in) const {
-  return MpcCmd(in(0, 0).scalar(), in(0, 1).scalar());
-}
-
-} // namespace mpc
+} // namespace mppi
 
 std::pair<double, double> latlon_to_XY(double lat0, double lon0, double lat1,
                                        double lon1) {

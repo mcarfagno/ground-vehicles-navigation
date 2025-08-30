@@ -1,10 +1,10 @@
 #include <ros/ros.h>
-#include <mpc_control/mpc_node.hpp>
+#include <mppi_control/mppi_node.hpp>
 
 int main(int argc, char ** argv)
 {
-  ros::init(argc,argv,"mpc_node");
-  mpc::MpcNode node;
+  ros::init(argc,argv,"mppi_node");
+  mppi::MppiNode node;
   node.run();
 
   return 0;
