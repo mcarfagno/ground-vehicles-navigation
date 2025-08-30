@@ -9,7 +9,6 @@ MppiNode : MppiNode() : private_nh_("~") {
   mpc_ = std::nullopt;
   latest_odom_ = std::nullopt;
 
-  prev_mpc_traj_ = std::nullopt;
   prev_mpc_cmd_ = std::nullopt;
   prev_cmd_ = {0.0, 0.0};
 
@@ -103,9 +102,6 @@ void MppiNode::run() {
     if (prev_mpc_cmd_.has_value()) {
       mpc_dict_in[CONTROL_GUESS_DICT_KEY] = prev_mpc_cmd_.value();
     }
-    if (prev_mpc_traj_.has_value()) {
-      mpc_dict_in[TRAJECTORY_GUESS_DICT_KEY] = prev_mpc_traj_.value();
-    }
 
     auto result = mpc_->solve(mpc_dict_in);
     if (result.has_value()) {
@@ -116,12 +112,10 @@ void MppiNode::run() {
       publish_mpc_cmd(speed, ctrl.steer);
       publish_rviz_markers(result.value()[OPTIMIZED_TRAJECTORY_DICT_KEY]);
       prev_mpc_cmd_ = result.value()[OPTIMIZED_CONTROL_DICT_KEY];
-      prev_mpc_traj_ = result.value()[OPTIMIZED_TRAJECTORY_DICT_KEY];
       prev_cmd_ = ctrl;
     } else {
       publish_mpc_cmd(0.0, 0.0);
       prev_cmd_ = {0.0, 0.0};
-      prev_mpc_traj_ = std::nullopt;
       prev_mpc_cmd_ = std::nullopt;
     }
 
@@ -129,14 +123,14 @@ void MppiNode::run() {
   }
 }
 
-void MpcNode::publish_mpc_cmd(double speed, double steer) {
+void MppiNode::publish_mpc_cmd(double speed, double steer) {
   auto cmd_msg = ackermann_msgs::AckermannDrive();
   cmd_msg.speed = speed;
   cmd_msg.steering_angle = steer;
   cmd_pub_.publish(cmd_msg);
 }
 
-void MpcNode::publish_rviz_markers(const casadi::DM &predicted_state_traj) {
+void MppiNode::publish_rviz_markers(const casadi::DM &predicted_state_traj) {
   visualization_msgs::MarkerArray marker_arr;
 
   // 1- publish optimized trajectory

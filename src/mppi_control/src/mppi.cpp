@@ -4,26 +4,13 @@
 
 namespace mppi {
 
-KinematicMpc::KinematicMpc(const KinematicModel &m, const MpcParameters &p,
-                           const casadi::DM &trajectory,
-                           const casadi::DM &obstacles) {}
+MPPI::MPPI() {}
 
 Eigen::MatrixXf
 MPPI::reinterpolate_reference_trajectory(const Eigen::MatrixXf &traj,
-                                         const Eigen::Vector4d &x) const {
+                                         const Eigen::Vector4f &x) const {
   using Spline1D = Eigen::Spline<float, 1, 2>;
   using SplineFitting1D = Eigen::SplineFitting<Spline1D>;
-
-  Eigen::Matrix<float, N_, nx_> waypoints;
-
-  // Find the index of the closest trajectory point to the vehicle.
-  std::vector<float> distances(traj.rows());
-  for (std::size_t i = 0; i < traj.rows(); i++) {
-    distances[i] = std::hypot(x(0) - traj(i, 0), x(1) - traj(i, 1));
-  }
-
-  auto min_element = std::min_element(distances.begin(), distances.end());
-  std::size_t closest_idx = std::distance(distances.begin(), min_element);
 
   // find target states by interpolating along trajectory length.
   // compute first the distance along the trajectory for each traj point
@@ -35,6 +22,14 @@ MPPI::reinterpolate_reference_trajectory(const Eigen::MatrixXf &traj,
                                          traj(i, 1) - traj(i - 1, 1));
   }
 
+  // Find the index of the closest trajectory point to the vehicle.
+  std::vector<float> distances(traj.rows());
+  for (std::size_t i = 0; i < traj.rows(); i++) {
+    distances[i] = std::hypot(x(0) - traj(i, 0), x(1) - traj(i, 1));
+  }
+
+  auto min_element = std::min_element(distances.begin(), distances.end());
+  std::size_t closest_idx = std::distance(distances.begin(), min_element);
   auto start_dist = cdist[closest_idx];
 
   // interpolate the trajectory at these points
@@ -43,7 +38,7 @@ MPPI::reinterpolate_reference_trajectory(const Eigen::MatrixXf &traj,
   const float v = traj.col(3).mean();
 
   Eigen::VectorXf intp_pts(N_);
-  for (std::size_t i = 0; i < N_; i++) {
+  for (std::size_t i = 0; i < T_; i++) {
     intp_pts(i) = std::clamp(start_dist + (i + 1) * v * dt_, cdist.head(1)[0],
                              cdist.tail(1)[0]);
   }
@@ -65,15 +60,12 @@ MPPI::reinterpolate_reference_trajectory(const Eigen::MatrixXf &traj,
   Spline1D v_intp(fit_v);
 
   // interpolate at target points
-  for (std::size_t i = 0; i < N_; i++) {
+  Eigen::Matrix<float, T_, dim_x_> waypoints;
+  for (std::size_t i = 0; i < waypoints.rows(); i++) {
     waypoints(i, 0) = x_intp(intp_pts(i)).coeff(0);
-    ;
     waypoints(i, 1) = y_intp(intp_pts(i)).coeff(0);
-    ;
     waypoints(i, 2) = t_intp(intp_pts(i)).coeff(0);
-    ;
     waypoints(i, 3) = v_intp(intp_pts(i)).coeff(0);
-    ;
   }
 
   // NOTE: equivalent of MATLAB unwrap, removes jumps from heading
@@ -84,7 +76,7 @@ MPPI::reinterpolate_reference_trajectory(const Eigen::MatrixXf &traj,
   };
 
   waypoints(0, 2) = unwrap(x(2), waypoints(0, 2));
-  for (std::size_t i = 1; i < N_; i++) {
+  for (std::size_t i = 1; i < waypoints.rows(); i++) {
     waypoints(i, 2) = unwrap(waypoints(i - 1, 2), waypoints(i, 2));
   }
 

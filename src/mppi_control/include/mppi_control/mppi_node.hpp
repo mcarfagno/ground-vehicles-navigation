@@ -52,24 +52,21 @@ private:
   float acc_rate_weight_;
   float dist_weight_;
 
-  MpcCmd prev_cmd_;
+  MppiCmd prev_cmd_;
 
-  // TODO: casadi -> eigen?
-  // std::optional<casadi::DM> prev_mpc_traj_;
-  std::optional<casadi::DM> prev_mpc_cmd_;
+  std::optional<Eigen::MatrixXf> prev_mpc_cmd_;
   std::optional<Mppi> mppi_;
 
   std::optional<nav_msgs::Odometry> latest_odom_;
   std::optional<nav_msgs::Path> path_;
   std::optional<vision_msgs::Detection3DArray> obstacles_;
 
-  // TODO: casadi -> eigen?
   Eigen::Vector4f odometry_to_matrix(const nav_msgs::Odometry &odom) const;
   Eigen::MatrixXf
   obstacles_to_matrix(const vision_msgs::Detection3DArray &obs) const;
 
   void publish_mppi_cmd(double speed, double steer);
-  void publish_rviz_markers(const casadi::DM &predicted_state_traj);
+  void publish_rviz_markers(const Eigen::MatrixXf &predicted_state_traj);
 };
 
 } // namespace mppi
