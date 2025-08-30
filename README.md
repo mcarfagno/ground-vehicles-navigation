@@ -6,6 +6,7 @@ This repo contains a demo of a model predictive controller, which given a specif
 
 * This Demo is built on top of [POLARIS_GEM_e2 simulator](https://gitlab.engr.illinois.edu/gemillins/POLARIS_GEM_e2).
 * The MPC is implemented using the [CasADi](https://web.casadi.org/docs/) framework, using [1] as reference.
+* The MPPI is implemented, using [2] as reference.
 
 ## Project Structure
 
@@ -98,3 +99,4 @@ docker run -it --net=host --ipc=host --privileged \
 
 ### References
 * [1][MPC Berkley - genesis path follower](https://github.com/MPC-Berkeley/genesis_path_follower/tree/master)
+* [1][MizuhoAOKI](https://github.com/MizuhoAOKI/python_simple_mppi/tree/master)

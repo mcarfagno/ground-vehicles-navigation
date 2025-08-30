@@ -9,7 +9,7 @@ MppiNode : MppiNode() : private_nh_("~") {
   mpc_ = std::nullopt;
   latest_odom_ = std::nullopt;
 
-  prev_mpc_cmd_ = std::nullopt;
+  prev_mppi_cmd_ = std::nullopt;
   prev_cmd_ = {0.0, 0.0};
 
   // params
@@ -87,37 +87,22 @@ void MppiNode::run() {
 
       prev_cmd_ = {0.0, 0.0};
       prev_mpc_traj_ = std::nullopt;
-      prev_mpc_cmd_ = std::nullopt;
+      prev_mppi_cmd_ = std::nullopt;
       continue;
     }
 
-    // control loop
-    auto mpc_dict_in = casadi::DMDict();
-    mpc_dict_in[INITIAL_STATE_DICT_KEY] =
-        odometry_to_casadi(latest_odom_.value());
-    mpc_dict_in[INITIAL_CONTROL_DICT_KEY] = cmd_to_casadi(prev_cmd_);
+    // TODO: control loop
+    auto ctr = std::make_pair(1.0, 0.0);
+    Eigen::MatrixXf &optimal_traj;
+    std::vector<Eigen::MatrixXf> sampled_traj_list;
 
-    // use the previous solution to seed the solution
-    // for the next step
-    if (prev_mpc_cmd_.has_value()) {
-      mpc_dict_in[CONTROL_GUESS_DICT_KEY] = prev_mpc_cmd_.value();
-    }
-
-    auto result = mpc_->solve(mpc_dict_in);
-    if (result.has_value()) {
-      auto ctrl = casadi_to_cmd(result.value()[OPTIMIZED_CONTROL_DICT_KEY]);
-      auto speed = std::hypot(latest_odom_.value().twist.twist.linear.x,
-                              latest_odom_.value().twist.twist.linear.y) +
-                   ctrl.acceleration * 1. / rate_;
-      publish_mpc_cmd(speed, ctrl.steer);
-      publish_rviz_markers(result.value()[OPTIMIZED_TRAJECTORY_DICT_KEY]);
-      prev_mpc_cmd_ = result.value()[OPTIMIZED_CONTROL_DICT_KEY];
-      prev_cmd_ = ctrl;
-    } else {
-      publish_mpc_cmd(0.0, 0.0);
-      prev_cmd_ = {0.0, 0.0};
-      prev_mpc_cmd_ = std::nullopt;
-    }
+    auto speed = std::hypot(latest_odom_.value().twist.twist.linear.x,
+                            latest_odom_.value().twist.twist.linear.y) +
+                 ctrl.first * 1. / rate_;
+    publish_mpc_cmd(speed, ctrl.second);
+    publish_rviz_markers();
+    // prev_mppi_cmd_ = ???;
+    prev_cmd_ = ctrl;
 
     loop_rate.sleep();
   }
@@ -130,7 +115,9 @@ void MppiNode::publish_mpc_cmd(double speed, double steer) {
   cmd_pub_.publish(cmd_msg);
 }
 
-void MppiNode::publish_rviz_markers(const casadi::DM &predicted_state_traj) {
+void MppiNode::publish_rviz_markers(
+    const Eigen::MatrixXf &optimal_traj,
+    const std::vector<Eigen::MatrixXf> sampled_traj_list) {
   visualization_msgs::MarkerArray marker_arr;
 
   // 1- publish optimized trajectory
@@ -148,16 +135,39 @@ void MppiNode::publish_rviz_markers(const casadi::DM &predicted_state_traj) {
   marker.color.a = 1.0;
   marker.frame_locked = true;
 
-  for (std::size_t i = 0;
-       i < static_cast<std::size_t>(predicted_state_traj.size1()); i++) {
+  for (std::size_t i = 0; i < optimal_traj.rows(); i++) {
     geometry_msgs::Point point;
-    point.x = predicted_state_traj(i, 0).scalar();
-    point.y = predicted_state_traj(i, 1).scalar();
+    point.x = predicted_state_traj(i, 0);
+    point.y = predicted_state_traj(i, 1);
     marker.points.push_back(point);
   }
   marker_arr.markers.push_back(marker);
 
   // TODO: 2- publish sampled trajectories
+  for (std::size_t i = 0; i < sampled_traj_list.size(); i++) {
+    sample = sampled_traj_list[i] visualization_msgs::Marker marker;
+    marker.header.frame_id = "world";
+    marker.header.stamp = ros::Time::now();
+    marker.ns = "mpc_path_marker";
+    marker.id = i;
+    marker.type = visualization_msgs::Marker::LINE_STRIP;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.scale.x = 0.2;
+    marker.color.r = 0.5;
+    marker.color.g = 0.5;
+    marker.color.b = 0.5;
+    marker.color.a = 0.35;
+    marker.frame_locked = true;
+
+    for (std::size_t i = 0; i < sample.rows(); i++) {
+      geometry_msgs::Point point;
+      point.x = sample(i, 0);
+      point.y = sample(i, 1);
+      marker.points.push_back(point);
+    }
+    marker_arr.markers.push_back(marker);
+  }
+
   viz_pub_.publish(std::move(marker_arr));
 }
 
@@ -203,17 +213,3 @@ MppiNode::obstacles_to_matrix(const vision_msgs::Detection3DArray &obs) const {
 }
 
 } // namespace mpppi
-
-std::pair<double, double> latlon_to_XY(double lat0, double lon0, double lat1,
-                                       double lon1) {
-  auto R_earth = 6371000; // meters
-  auto delta_lat = (lat1 - lat0) * (M_PI / 180);
-
-  auto delta_lon = (lon1 - lon0) * (M_PI / 180);
-
-  auto lat_avg = 0.5 * (lat1 * (M_PI / 180) + lat0 * (M_PI / 180));
-  auto X = R_earth * delta_lon * std::cos(lat_avg);
-  auto Y = R_earth * delta_lat;
-
-  return std::make_pair(X, Y);
-}

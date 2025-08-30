@@ -3,6 +3,7 @@
 
 #include <Eigen/Dense>
 #include <random>
+#include <utility>
 
 /* @brief used to sample a multivariate_normal
  * SOURCE:
@@ -40,5 +41,28 @@ struct normal_random_variable {
                                   [&](auto x) { return dist(gen); });
   }
 };
+
+/**
+ * @brief Converts latitude and longitude to global X, Y coordinates,
+ *        using an equirectangular projection.
+ *
+ *  @returns pair(meters east of lon0, meters north of lat0)
+ *
+ *  Sources: http://www.movable-type.co.uk/scripts/latlong.html
+ *           https://github.com/MPC-Car/StochasticLC/blob/master/controller.py
+ */
+std::pair<double, double> latlon_to_XY(double lat0, double lon0, double lat1,
+                                       double lon1) {
+  auto R_earth = 6371000; // meters
+  auto delta_lat = (lat1 - lat0) * (M_PI / 180);
+
+  auto delta_lon = (lon1 - lon0) * (M_PI / 180);
+
+  auto lat_avg = 0.5 * (lat1 * (M_PI / 180) + lat0 * (M_PI / 180));
+  auto X = R_earth * delta_lon * std::cos(lat_avg);
+  auto Y = R_earth * delta_lat;
+
+  return std::make_pair(X, Y);
+}
 
 #endif

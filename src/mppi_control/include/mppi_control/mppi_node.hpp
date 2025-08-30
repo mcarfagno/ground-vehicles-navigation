@@ -54,7 +54,7 @@ private:
 
   MppiCmd prev_cmd_;
 
-  std::optional<Eigen::MatrixXf> prev_mpc_cmd_;
+  std::optional<Eigen::MatrixXf> prev_mppi_cmd_;
   std::optional<Mppi> mppi_;
 
   std::optional<nav_msgs::Odometry> latest_odom_;
@@ -66,21 +66,11 @@ private:
   obstacles_to_matrix(const vision_msgs::Detection3DArray &obs) const;
 
   void publish_mppi_cmd(double speed, double steer);
-  void publish_rviz_markers(const Eigen::MatrixXf &predicted_state_traj);
+  void
+  publish_rviz_markers(const Eigen::MatrixXf &optimal_traj,
+                       const std::vector<Eigen::MatrixXf> sampled_traj_list);
 };
 
 } // namespace mppi
-
-/**
- * @brief Converts latitude and longitude to global X, Y coordinates,
- *        using an equirectangular projection.
- *
- *  @returns pair(meters east of lon0, meters north of lat0)
- *
- *  Sources: http://www.movable-type.co.uk/scripts/latlong.html
- *           https://github.com/MPC-Car/StochasticLC/blob/master/controller.py
- */
-std::pair<double, double> latlon_to_XY(double lat0, double lon0, double lat1,
-                                       double lon1);
 
 #endif
