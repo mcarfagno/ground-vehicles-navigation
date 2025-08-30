@@ -45,8 +45,7 @@ MPPI::reinterpolate_reference_trajectory(const Eigen::MatrixXf  &traj,
   // interpolate the trajectory at these points
   // NOTE: the interpolation points are equally
   // spaced given the average speed
-  float v = traj.col(3).norm();
-  v /= traj.col(3).size();
+  const float v = traj.col(3).mean();
 
   Eigen::VectorXf intp_pts(N_);
   for (std::size_t i = 0; i < N_; i++) {
