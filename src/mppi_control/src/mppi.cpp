@@ -4,8 +4,8 @@
 
 namespace mppi {
 
-MPPI::MppiCmd compute_optimal_input(const Eigen::MatrixXd &trajectory,
-                                    const Eigen::Vector4f &x0) {
+MPPI::MppiCmd MPPI::compute_optimal_input(const Eigen::MatrixXf &trajectory,
+                                          const Eigen::Vector4f &x0) {
 
   // nominal control sequence
   auto u = prev_u_;
@@ -26,13 +26,15 @@ MPPI::MppiCmd compute_optimal_input(const Eigen::MatrixXd &trajectory,
     const auto epsilon = compute_epsilon_();
 
     // buffer for sampled control sequence
-    auto v = Eigen::MatrixXf::Zero(u.rows(), u.cols());
+    // buffer for sampled control sequence
+    Eigen::MatrixXf v;
+    v.setZero(u.rows(), u.cols());
 
     // loop for time step t = 1 ~ T
     for (std::size_t t = 1; t < T_ + 1; t++) {
 
       // TODO: exploit or explore ?
-      v.row(t - 1) = u.row(t - 1).array() + epsilon.row(t - 1).array();
+      v.row(t - 1) = u.row(t - 1) + epsilon.row(t - 1);
 
       // update x
       x = F_(x, g_(v.row(t - 1)));

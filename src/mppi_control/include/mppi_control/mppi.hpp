@@ -42,7 +42,8 @@ public:
   ~MPPI() {}
 
   // TODO: add obstacles
-  MppiCmd compute_optimal_input(const Eigen::Vector4f &x0);
+  MPPI::MppiCmd compute_optimal_input(const Eigen::MatrixXf &trajectory,
+                                      const Eigen::Vector4f &x0);
 
 private:
   // mppi parameters
