@@ -15,7 +15,6 @@
  *         .5, 1;
  *
  * normal_random_variable sample { covar };
- *
  * std::cout << sample() << std::endl;
  * */
 struct normal_random_variable {

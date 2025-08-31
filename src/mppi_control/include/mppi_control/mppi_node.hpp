@@ -1,7 +1,6 @@
 #ifndef MPPI_CONTROL__MPPI_NODE_HPP_
 #define MPPI_CONTROL__MPPI_NODE_HPP_
 
-#include "mppi_control/mppi.hpp"
 #include <ackermann_msgs/AckermannDrive.h>
 #include <geometry_msgs/Point.h>
 #include <memory>
@@ -16,6 +15,8 @@
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
 
+#include "mppi_control/mppi.hpp"
+#include "mppi_control/utils.hpp"
 namespace mppi {
 
 // World origin in Lat/Lon
@@ -52,9 +53,6 @@ private:
   float acc_rate_weight_;
   float dist_weight_;
 
-  MppiCmd prev_cmd_;
-
-  std::optional<Eigen::MatrixXf> prev_mppi_cmd_;
   std::optional<Mppi> mppi_;
 
   std::optional<nav_msgs::Odometry> latest_odom_;

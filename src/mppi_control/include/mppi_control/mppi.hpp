@@ -10,7 +10,7 @@
 #include "mppi_control/utils.hpp"
 namespace mppi {
 
-/* @brief (acceleration,steer)
+/* @brief (steer,accel)
  * */
 typedef std::pair<double, double> MppiCmd;
 
@@ -34,17 +34,23 @@ public:
     sigma_ << 0.5, 0.0, 0.0, 0.1;
     stage_cost_weight_ << 50.0, 50.0, 1.0, 20.0;
     terminal_cost_weight_ << 50.0, 50.0, 1.0, 20.0;
+
+    // TODO: this should be called on reset
+    u_prev_.setZero(T_, dim_u_);
   }
 
   ~MPPI() {}
 
+  // TODO: add obstacles
+  MppiCmd compute_optimal_input(const Vector4f &x0);
+
 private:
   // mppi parameters
   float dim_x_ = 4; // dimension of system state vector
-  float dim_u = 2;  // dimension of control input vector
+  float dim_u_ = 2; // dimension of control input vector
 
   std::size_t T_;                        // prediction horizon
-  std::size_t K_;                        // number of sample trajectories
+  std::size_t K_;                        // number of rollouts
   float param_exploration_;              // constant parameter of mppi
   float param_lambda_;                   // constant parameter of mppi
   float param_alpha_;                    // constant parameter of mppi
@@ -52,6 +58,7 @@ private:
   Eigen::Matrix2f sigma_;                // standard deviation of noise
   Eigen::Vector4f stage_cost_weight_;    // weight for [x, y, yaw, v]
   Eigen::Vector4f terminal_cost_weight_; // weight for [x, y, yaw, v]
+  Eigen::MatrixXf u_prev_; // nominal control sequence (prev iteration)
 
   // vehicle parameters
   float dt_ = dt;
@@ -71,6 +78,21 @@ private:
   Eigen::MatrixXf
   reinterpolate_reference_trajectory(const Eigen::MatrixXf &traj,
                                      const Eigen::Vector4f &x) const;
+
+  /**
+   * @brief samples disturbance vector epsilon_u_k
+   * */
+  Eigen::MatrixXf compute_epsilon_() const;
+
+  /**
+   * @brief vehicle kinematics
+   * */
+  Eigen::Vector4f F_(Eigen::Vector4f x_t, Eigen::Vector2f u_t) const;
+
+  /**
+   * @brief input clamp function
+   * */
+  Eigen::Vector2f g_(Eigen::Vector2f u_t) const;
 };
 
 } // namespace mppi

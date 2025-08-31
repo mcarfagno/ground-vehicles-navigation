@@ -9,11 +9,9 @@ MppiNode : MppiNode() : private_nh_("~") {
   mpc_ = std::nullopt;
   latest_odom_ = std::nullopt;
 
-  prev_mppi_cmd_ = std::nullopt;
-  prev_cmd_ = {0.0, 0.0};
-
   // params
-  private_nh_.param("rate", rate_, float(10.0));
+  private_nh_.param("rate", rate_, float(20.0));
+  // TODO: update all of these
   private_nh_.param("control_horizon_len", mpc_horizon_steps_, int(10));
   private_nh_.param("obstacles_safety_distance", obs_safety_dist_, float(0.25));
 
@@ -85,9 +83,6 @@ void MppiNode::run() {
       latest_odom_ = std::nullopt;
       publish_mpc_cmd(0.0, 0.0);
 
-      prev_cmd_ = {0.0, 0.0};
-      prev_mpc_traj_ = std::nullopt;
-      prev_mppi_cmd_ = std::nullopt;
       continue;
     }
 
@@ -98,11 +93,9 @@ void MppiNode::run() {
 
     auto speed = std::hypot(latest_odom_.value().twist.twist.linear.x,
                             latest_odom_.value().twist.twist.linear.y) +
-                 ctrl.first * 1. / rate_;
-    publish_mpc_cmd(speed, ctrl.second);
+                 ctrl.second * 1. / rate_;
+    publish_mpc_cmd(speed, ctrl.first);
     publish_rviz_markers();
-    // prev_mppi_cmd_ = ???;
-    prev_cmd_ = ctrl;
 
     loop_rate.sleep();
   }
@@ -124,7 +117,7 @@ void MppiNode::publish_rviz_markers(
   visualization_msgs::Marker marker;
   marker.header.frame_id = "world";
   marker.header.stamp = ros::Time::now();
-  marker.ns = "mpc_path_marker";
+  marker.ns = "mppi_path_marker";
   marker.id = 0;
   marker.type = visualization_msgs::Marker::LINE_STRIP;
   marker.action = visualization_msgs::Marker::ADD;
@@ -135,21 +128,22 @@ void MppiNode::publish_rviz_markers(
   marker.color.a = 1.0;
   marker.frame_locked = true;
 
+  marker.points.resize(optimal_traj.rows());
   for (std::size_t i = 0; i < optimal_traj.rows(); i++) {
-    geometry_msgs::Point point;
-    point.x = predicted_state_traj(i, 0);
-    point.y = predicted_state_traj(i, 1);
-    marker.points.push_back(point);
+    marker.points[i].x = predicted_state_traj(i, 0);
+    marker.points[i].y = predicted_state_traj(i, 1);
   }
+
   marker_arr.markers.push_back(marker);
 
-  // TODO: 2- publish sampled trajectories
+  // 2- publish sampled trajectories
   for (std::size_t i = 0; i < sampled_traj_list.size(); i++) {
-    sample = sampled_traj_list[i] visualization_msgs::Marker marker;
+    const auto &sample = sampled_traj_list[i];
+    visualization_msgs::Marker marker;
     marker.header.frame_id = "world";
     marker.header.stamp = ros::Time::now();
-    marker.ns = "mpc_path_marker";
-    marker.id = i;
+    marker.ns = "mppi_path_marker";
+    marker.id = i + 1;
     marker.type = visualization_msgs::Marker::LINE_STRIP;
     marker.action = visualization_msgs::Marker::ADD;
     marker.scale.x = 0.2;
@@ -159,11 +153,10 @@ void MppiNode::publish_rviz_markers(
     marker.color.a = 0.35;
     marker.frame_locked = true;
 
+    marker.points.resize(sample.rows());
     for (std::size_t i = 0; i < sample.rows(); i++) {
-      geometry_msgs::Point point;
-      point.x = sample(i, 0);
-      point.y = sample(i, 1);
-      marker.points.push_back(point);
+      sample.points[i].x = predicted_state_traj(i, 0);
+      sample.points[i].y = predicted_state_traj(i, 1);
     }
     marker_arr.markers.push_back(marker);
   }
