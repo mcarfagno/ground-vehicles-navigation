@@ -4,8 +4,8 @@
 
 namespace mppi {
 
-MPPI::MppiCmd compute_optimal_input(const MatrixXd &trajectory,
-                                    const Vector4f &x0) {
+MPPI::MppiCmd compute_optimal_input(const Eigen::MatrixXd &trajectory,
+                                    const Eigen::Vector4f &x0) {
 
   // nominal control sequence
   auto u = prev_u_;
@@ -14,7 +14,8 @@ MPPI::MppiCmd compute_optimal_input(const MatrixXd &trajectory,
   const auto reference = reinterpolate_reference_trajectory(trajectory, x0);
 
   // buffer for rollout costs
-  Eigen::VectorXf::Zero S(K_);
+  Eigen::VectorXf S;
+  S.setZero(K_);
 
   // loop for 0 ~ K-1 samples
   for (std::size_t k = 0; k < K_; k++) {
@@ -31,7 +32,7 @@ MPPI::MppiCmd compute_optimal_input(const MatrixXd &trajectory,
     for (std::size_t t = 1; t < T_ + 1; t++) {
 
       // TODO: exploit or explore ?
-      v.row(t - 1) = u.row(t - 1) + epsilon.row(t - 1);
+      v.row(t - 1) = u.row(t - 1).array() + epsilon.row(t - 1).array();
 
       // update x
       x = F_(x, g_(v.row(t - 1)));
@@ -57,7 +58,7 @@ Eigen::Vector4f MPPI::F_(const Eigen::Vector4f &x_t,
 
   return Eigen::Vector4f(
       x + v * std::cos(yaw) * dt_, y + v * std::sin(yaw) * dt_,
-      yaw + v / wheel_base_ * std::tan(steer) * dt, v + accel * dt);
+      yaw + v / wheel_base_ * std::tan(steer) * dt_, v + accel * dt_);
 }
 
 Eigen::Vector2f MPPI::g_(const Eigen::Vector2f &u_t) const {
@@ -66,10 +67,10 @@ Eigen::Vector2f MPPI::g_(const Eigen::Vector2f &u_t) const {
 }
 
 float MPPI::c_(const Eigen::Vector4f &x_t, const Eigen::Vector4f &x_ref) const {
-  auto stage_cost = stage_cost_weight_[0] * (x_t(0) - x_ref(0)) * *2 +
-                    stage_cost_weight_[1] * (x_t(1) - x_ref(1)) * *2 +
-                    stage_cost_weight_[2] * (x_t(2) - x_ref(2)) * *2 +
-                    stage_cost_weight_[3] * (x_t(2) - x_ref(2)) * *2;
+  auto stage_cost = stage_cost_weight_[0] * std::pow((x_t(0) - x_ref(0)), 2) +
+                    stage_cost_weight_[1] * std::pow((x_t(1) - x_ref(1)), 2) +
+                    stage_cost_weight_[2] * std::pow((x_t(2) - x_ref(2)), 2) +
+                    stage_cost_weight_[3] * std::pow((x_t(2) - x_ref(2)), 2);
 
   // TODO add penalty for collision with obstacles
   return stage_cost;
@@ -77,12 +78,15 @@ float MPPI::c_(const Eigen::Vector4f &x_t, const Eigen::Vector4f &x_ref) const {
 
 Eigen::MatrixXf MPPI::compute_epsilon_() const {
 
-  Eigen::MatrixXf::Zero epsilon(T_, dim_u_);
-  normal_random_variable sample{sigma_};
+  Eigen::MatrixXf epsilon;
+  epsilon.setZero(T_, dim_u_);
+  normal_random_variable sample{sigma_.cast<double>()};
 
   // TODO: this will complain
-  for (std::size_t i = 0; i < epilon.rows(); i++) {
-    epsilon.row(i) = sample();
+  for (std::size_t i = 0; i < epsilon.rows(); i++) {
+    auto tmp = sample().cast<float>();
+    epsilon(i, 0) = tmp(0);
+    epsilon(i, 1) = tmp(1);
   }
 
   return epsilon;

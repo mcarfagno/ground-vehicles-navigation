@@ -42,7 +42,7 @@ public:
   ~MPPI() {}
 
   // TODO: add obstacles
-  MppiCmd compute_optimal_input(const Vector4f &x0);
+  MppiCmd compute_optimal_input(const Eigen::Vector4f &x0);
 
 private:
   // mppi parameters
@@ -62,15 +62,15 @@ private:
 
   // vehicle parameters
   float dt_ = dt;
-  double wheel_base_ = 1.75;        // [m]
-  double vehicle_width_ = 1.2;      // [m]
-  double v_min_ = 0.0;              // [m/s]
-  double v_max_ = 10.0;             // [m/s]
-  double a_max_abs_ = 3.0;          // [m/ss]
-  double jerk_max_abs_ = 1.5;       // [m/sss]
-  double steer_max_abs_ = 0.61;     // [rad]
-  double steer_rate_max_abs_ = 0.5; // [rad/s]
-                                    //
+  float wheel_base_ = 1.75;        // [m]
+  float vehicle_width_ = 1.2;      // [m]
+  float v_min_ = 0.0;              // [m/s]
+  float v_max_ = 10.0;             // [m/s]
+  float a_max_abs_ = 3.0;          // [m/ss]
+  float jerk_max_abs_ = 1.5;       // [m/sss]
+  float steer_max_abs_ = 0.61;     // [rad]
+  float steer_rate_max_abs_ = 0.5; // [rad/s]
+                                   //
   /**
    * @brief reinterpolates a trajectory to one of the correct
    * size and starting point
