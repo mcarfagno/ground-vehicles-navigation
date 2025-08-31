@@ -79,14 +79,12 @@ float MPPI::c_(const Eigen::Vector4f &x_t, const Eigen::Vector4f &x_ref) const {
 }
 
 Eigen::MatrixXf MPPI::compute_epsilon_() const {
-
   Eigen::MatrixXf epsilon;
   epsilon.setZero(T_, dim_u_);
   normal_random_variable sample{sigma_.cast<double>()};
 
-  // TODO: this will complain
   for (std::size_t i = 0; i < epsilon.rows(); i++) {
-    auto tmp = sample().cast<float>();
+    const Eigen::VectorXd tmp = sample();
     epsilon(i, 0) = tmp(0);
     epsilon(i, 1) = tmp(1);
   }
