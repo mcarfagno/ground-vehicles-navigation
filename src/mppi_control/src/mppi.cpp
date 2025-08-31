@@ -15,8 +15,7 @@ MPPI::MppiCmd MPPI::compute_optimal_input(const Eigen::MatrixXf &trajectory,
       reinterpolate_reference_trajectory(trajectory, x0);
 
   // buffer for rollout costs
-  Eigen::VectorXf S;
-  S.setZero(K_);
+  Eigen::VectorXf S = Eigen::VectorXf::Zero(K_);
 
   // loop for 0 ~ K-1 samples
   for (std::size_t k = 0; k < K_; k++) {
@@ -27,9 +26,7 @@ MPPI::MppiCmd MPPI::compute_optimal_input(const Eigen::MatrixXf &trajectory,
     const auto epsilon = compute_epsilon_();
 
     // buffer for sampled control sequence
-    // buffer for sampled control sequence
-    Eigen::MatrixXf v;
-    v.setZero(u.rows(), u.cols());
+    Eigen::MatrixXf v = Eigen::MatrixXf::Zero(u.rows(), u.cols());
 
     // loop for time step t = 1 ~ T
     for (std::size_t t = 1; t < T_ + 1; t++) {
@@ -72,19 +69,18 @@ Eigen::Vector2f MPPI::g_(const Eigen::Vector2f &u_t) const {
 }
 
 float MPPI::c_(const Eigen::Vector4f &x_t, const Eigen::Vector4f &x_ref) const {
-  Eigen::DiagonalMatrix<float, 4> Q(stage_cost_weight_);
-  Eigen::Vector4f x_err = x_t - x_ref;
 
   // Compute the cost
-  float stage_cost = x_err.transpose() * Q * x_err;
+  Eigen::Vector4f x_err = x_t - x_ref;
+  float stage_cost =
+      x_err.transpose() * stage_cost_weight_.asDiagonal() * x_err;
 
   // TODO add penalty for collision with obstacles
   return stage_cost;
 }
 
 Eigen::MatrixXf MPPI::compute_epsilon_() const {
-  Eigen::MatrixXf epsilon;
-  epsilon.setZero(T_, dim_u_);
+  Eigen::MatrixXf epsilon = Eigen::MatrixXf::Zero(T_, dim_u_);
   normal_random_variable sample{sigma_.cast<double>()};
 
   for (std::size_t i = 0; i < epsilon.rows(); i++) {
