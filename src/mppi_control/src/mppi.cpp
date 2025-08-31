@@ -8,10 +8,11 @@ MPPI::MppiCmd MPPI::compute_optimal_input(const Eigen::MatrixXf &trajectory,
                                           const Eigen::Vector4f &x0) {
 
   // nominal control sequence
-  auto u = prev_u_;
+  Eigen::MatrixXf u = prev_u_;
 
   // N points -> 1 for each horizon step
-  const auto reference = reinterpolate_reference_trajectory(trajectory, x0);
+  const Eigen::MatrixXf reference =
+      reinterpolate_reference_trajectory(trajectory, x0);
 
   // buffer for rollout costs
   Eigen::VectorXf S;
@@ -40,12 +41,14 @@ MPPI::MppiCmd MPPI::compute_optimal_input(const Eigen::MatrixXf &trajectory,
       x = F_(x, g_(v.row(t - 1)));
 
       // TODO: accumulate stage cost
-      S(k) += 0;
+      S(k) = S(k) + c_(x, reference.row(t - 1));
     }
 
     // TODO: terminal cost
-    S(k) += 0;
+    S(k) = S(k) + 0;
   }
+
+  return std::make_pair(0.0, 0.0);
 }
 
 Eigen::Vector4f MPPI::F_(const Eigen::Vector4f &x_t,
@@ -69,10 +72,11 @@ Eigen::Vector2f MPPI::g_(const Eigen::Vector2f &u_t) const {
 }
 
 float MPPI::c_(const Eigen::Vector4f &x_t, const Eigen::Vector4f &x_ref) const {
-  auto stage_cost = stage_cost_weight_[0] * std::pow((x_t(0) - x_ref(0)), 2) +
-                    stage_cost_weight_[1] * std::pow((x_t(1) - x_ref(1)), 2) +
-                    stage_cost_weight_[2] * std::pow((x_t(2) - x_ref(2)), 2) +
-                    stage_cost_weight_[3] * std::pow((x_t(2) - x_ref(2)), 2);
+  Eigen::DiagonalMatrix<float, 4> Q(stage_cost_weight_);
+  Eigen::Vector4f x_err = x_t - x_ref;
+
+  // Compute the cost
+  float stage_cost = x_err.transpose() * Q * x_err;
 
   // TODO add penalty for collision with obstacles
   return stage_cost;
