@@ -45,7 +45,8 @@ MPPI::MppiCmd compute_optimal_input(const MatrixXd &trajectory,
   }
 }
 
-Eigen::Vector4f MPPI::F_(Eigen::Vector4f x_t, Eigen::Vector2f u_t) const {
+Eigen::Vector4f MPPI::F_(const Eigen::Vector4f &x_t,
+                         const Eigen::Vector2f &u_t) const {
   const auto x = x_t(0);
   const auto y = x_t(1);
   const auto yaw = x_t(2);
@@ -59,9 +60,19 @@ Eigen::Vector4f MPPI::F_(Eigen::Vector4f x_t, Eigen::Vector2f u_t) const {
       yaw + v / wheel_base_ * std::tan(steer) * dt, v + accel * dt);
 }
 
-Eigen::Vector2f MPPI::g_(Eigen::Vector2f u_t) const {
+Eigen::Vector2f MPPI::g_(const Eigen::Vector2f &u_t) const {
   return Eigen::Vector2f(std::clamp(u_t(0), -steer_max_abs_, steer_max_abs_),
                          std::clamp(u_t(1), -a_max_abs_, a_max_abs_));
+}
+
+float MPPI::c_(const Eigen::Vector4f &x_t, const Eigen::Vector4f &x_ref) const {
+  auto stage_cost = stage_cost_weight_[0] * (x_t(0) - x_ref(0)) * *2 +
+                    stage_cost_weight_[1] * (x_t(1) - x_ref(1)) * *2 +
+                    stage_cost_weight_[2] * (x_t(2) - x_ref(2)) * *2 +
+                    stage_cost_weight_[3] * (x_t(2) - x_ref(2)) * *2;
+
+  // TODO add penalty for collision with obstacles
+  return stage_cost;
 }
 
 Eigen::MatrixXf MPPI::compute_epsilon_() const {

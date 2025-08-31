@@ -87,12 +87,18 @@ private:
   /**
    * @brief vehicle kinematics
    * */
-  Eigen::Vector4f F_(Eigen::Vector4f x_t, Eigen::Vector2f u_t) const;
+  Eigen::Vector4f F_(const Eigen::Vector4f &x_t,
+                     const Eigen::Vector2f &u_t) const;
 
   /**
    * @brief input clamp function
    * */
-  Eigen::Vector2f g_(Eigen::Vector2f u_t) const;
+  Eigen::Vector2f g_(const Eigen::Vector2f &u_t) const;
+
+  /**
+   * @brief stage cost function
+   * */
+  float c_(const Eigen::Vector4f &x_t, const Eigen::Vector4f &x_ref) const;
 };
 
 } // namespace mppi
