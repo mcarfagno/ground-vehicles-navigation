@@ -100,6 +100,11 @@ private:
    * @brief stage cost function
    * */
   float c_(const Eigen::Vector4f &x_t, const Eigen::Vector4f &x_ref) const;
+
+  /**
+   * @brief terminal cost function
+   * */
+  float phi_(const Eigen::Vector4f &x_t, const Eigen::Vector4f &x_ref) const;
 };
 
 } // namespace mppi

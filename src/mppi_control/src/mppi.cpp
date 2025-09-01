@@ -43,8 +43,17 @@ MPPI::MppiCmd MPPI::compute_optimal_input(const Eigen::MatrixXf &trajectory,
                  v.row(t - 1).transpose();
     }
 
-    // TODO: terminal cost
-    S(k) = S(k) + 0;
+    // terminal cost
+    S(k) = S(k) + phi_(x, reference.row(t - 1));
+  }
+
+  // compute information theoretic weights for each sample
+  const float rho = S.minCoeff() const float eta =
+      (-1.0 / param_lambda_ * (S.array() - rho)).exp().sum();
+
+  Eigen::VectorXf w = Eigen::VectorXf::Zero(K_);
+  for (std::size_t i = 0; i < w.size(); i++) {
+    w(i) = (1.0 / eta) * std::exp((-1.0 / param_lambda_) * (S(i) - rho));
   }
 
   return std::make_pair(0.0, 0.0);
@@ -71,6 +80,18 @@ Eigen::Vector2f MPPI::g_(const Eigen::Vector2f &u_t) const {
 }
 
 float MPPI::c_(const Eigen::Vector4f &x_t, const Eigen::Vector4f &x_ref) const {
+
+  // Compute the cost
+  Eigen::Vector4f x_err = x_t - x_ref;
+  float stage_cost =
+      x_err.transpose() * stage_cost_weight_.asDiagonal() * x_err;
+
+  // TODO add penalty for collision with obstacles
+  return stage_cost;
+}
+
+float MPPI::phi_(const Eigen::Vector4f &x_t,
+                 const Eigen::Vector4f &x_ref) const {
 
   // Compute the cost
   Eigen::Vector4f x_err = x_t - x_ref;
