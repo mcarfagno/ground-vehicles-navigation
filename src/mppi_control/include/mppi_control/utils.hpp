@@ -10,7 +10,7 @@
  * https://stackoverflow.com/questions/6142576/sample-from-multivariate-normal-gaussian-distribution-in-c
  * usage:
  * int size = 2;
- * Eigen::MatrixXd covar(size,size);
+ * Eigen::MatrixXf covar(size,size);
  *  covar << 1, .5,
  *         .5, 1;
  *
@@ -18,26 +18,26 @@
  * std::cout << sample() << std::endl;
  * */
 struct normal_random_variable {
-  normal_random_variable(Eigen::MatrixXd const &covar)
-      : normal_random_variable(Eigen::VectorXd::Zero(covar.rows()), covar) {}
+  normal_random_variable(Eigen::MatrixXf const &covar)
+      : normal_random_variable(Eigen::VectorXf::Zero(covar.rows()), covar) {}
 
-  normal_random_variable(Eigen::VectorXd const &mean,
-                         Eigen::MatrixXd const &covar)
+  normal_random_variable(Eigen::VectorXf const &mean,
+                         Eigen::MatrixXf const &covar)
       : mean(mean) {
-    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigenSolver(covar);
+    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXf> eigenSolver(covar);
     transform = eigenSolver.eigenvectors() *
                 eigenSolver.eigenvalues().cwiseSqrt().asDiagonal();
   }
 
-  Eigen::VectorXd mean;
-  Eigen::MatrixXd transform;
+  Eigen::VectorXf mean;
+  Eigen::MatrixXf transform;
 
-  Eigen::VectorXd operator()() const {
+  Eigen::VectorXf operator()() const {
     static std::mt19937 gen{std::random_device{}()};
-    static std::normal_distribution<> dist;
+    static std::normal_distribution<float> dist;
 
-    return mean + transform * Eigen::VectorXd{mean.size()}.unaryExpr(
-                                  [&](auto x) { return dist(gen); });
+    return mean + transform * Eigen::VectorXf{mean.size()}.unaryExpr(
+                                  [&](float x) { return dist(gen); });
   }
 };
 
