@@ -4,8 +4,9 @@
 #include "mppi_control/mppi.hpp"
 namespace mppi {
 
-MPPI::MppiCmd MPPI::compute_optimal_input(const Eigen::MatrixXf &trajectory,
-                                          const Eigen::Vector4f &x0) {
+std::tuple<MppiCmd, Eigen::MatrixXf, std::vector<Eigen::MatrixXf>>
+MPPI::compute_optimal_input(const Eigen::MatrixXf &trajectory,
+                            const Eigen::Vector4f &x0) {
 
   // nominal control sequence
   Eigen::MatrixXf u = prev_u_;
@@ -16,6 +17,8 @@ MPPI::MppiCmd MPPI::compute_optimal_input(const Eigen::MatrixXf &trajectory,
 
   // buffer for rollout costs
   Eigen::VectorXf S = Eigen::VectorXf::Zero(K_);
+  std::vector<Eigen::MatrixXf> epsilon_buff(K_);
+  std::vector<Eigen::MatrixXf> sampled_buff(K_);
 
   // loop for 0 ~ K-1 samples
   for (std::size_t k = 0; k < K_; k++) {
@@ -24,9 +27,11 @@ MPPI::MppiCmd MPPI::compute_optimal_input(const Eigen::MatrixXf &trajectory,
 
     // sample disturbance vector
     const auto epsilon = compute_epsilon_();
+    epsilon_buff[k] = epsilon;
 
     // buffer for sampled control sequence
     Eigen::MatrixXf v = Eigen::MatrixXf::Zero(u.rows(), u.cols());
+    Eigen::MatrixXf sampled_trajectory = Eigen::MatrixXf::Zero(T_, dim_x_);
 
     // loop for time step t = 1 ~ T
     for (std::size_t t = 1; t < T_ + 1; t++) {
@@ -36,6 +41,7 @@ MPPI::MppiCmd MPPI::compute_optimal_input(const Eigen::MatrixXf &trajectory,
 
       // update x
       x = F_(x, g_(v.row(t - 1)));
+      sampled_trajectory.row(t - 1) = x;
 
       // accumulate stage cost
       S(k) = S(k) + c_(x, reference.row(t - 1)) +
@@ -45,18 +51,42 @@ MPPI::MppiCmd MPPI::compute_optimal_input(const Eigen::MatrixXf &trajectory,
 
     // terminal cost
     S(k) = S(k) + phi_(x, reference.row(t - 1));
+    sampled_buff[k] = sampled_trajectory;
   }
 
   // compute information theoretic weights for each sample
-  const float rho = S.minCoeff() const float eta =
-      (-1.0 / param_lambda_ * (S.array() - rho)).exp().sum();
+  const float rho = S.minCoeff();
+  const float eta = (-1.0 / param_lambda_ * (S.array() - rho)).exp().sum();
 
   Eigen::VectorXf w = Eigen::VectorXf::Zero(K_);
   for (std::size_t i = 0; i < w.size(); i++) {
     w(i) = (1.0 / eta) * std::exp((-1.0 / param_lambda_) * (S(i) - rho));
   }
 
-  return std::make_pair(0.0, 0.0);
+  // update control input sequence
+  Eigen::MatrixXf w_epsilon = Eigen::MatrixXf::Zero(T_, dim_u_);
+  for (std::size_t t = 0; t < T_; t++) {
+    for (std::size_t k = 0; k < K_; k++) {
+      w_epsilon.row(t) += w(k) * epsilon_buff[k].row(t);
+    }
+  }
+  u = u + w_epsilon;
+
+  // set up for next iteration
+  u_prev_ = u;
+  utils::shiftColumnsByOnePlace(u_prev_, -1);
+  u_prev_.row(u_prev_.rows() - 1) = u_prev_.row(u.rows() - 2);
+
+  // calculate optimal trajectory
+  Eigen::MatrixXf optimal_trajectory = Eigen::MatrixXf::Zero(T_, dim_x_);
+  Eigen::Vector4f x = x0;
+  for (std::size_t t = 0; t < T_; t++) {
+    x = F_(x, g_(u.row(t)));
+    optimal_trajectory.row(t) = x;
+  }
+
+  return std::make_tuple(std::make_pair(u(0, 0), u(0, 1)), optimal_trajectory,
+                         sampled_buff);
 }
 
 Eigen::Vector4f MPPI::F_(const Eigen::Vector4f &x_t,
