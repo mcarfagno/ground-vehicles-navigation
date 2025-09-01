@@ -1,7 +1,7 @@
-#include "mppi_control/mppi.hpp"
 #include <stdexcept>
 #include <unsupported/Eigen/Splines>
 
+#include "mppi_control/mppi.hpp"
 namespace mppi {
 
 MPPI::MppiCmd MPPI::compute_optimal_input(const Eigen::MatrixXf &trajectory,
@@ -37,8 +37,10 @@ MPPI::MppiCmd MPPI::compute_optimal_input(const Eigen::MatrixXf &trajectory,
       // update x
       x = F_(x, g_(v.row(t - 1)));
 
-      // TODO: accumulate stage cost
-      S(k) = S(k) + c_(x, reference.row(t - 1));
+      // accumulate stage cost
+      S(k) = S(k) + c_(x, reference.row(t - 1)) +
+             param_gamma_ * u.row(t - 1) * sigma_.inverse() *
+                 v.row(t - 1).transpose();
     }
 
     // TODO: terminal cost
