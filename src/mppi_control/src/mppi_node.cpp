@@ -1,6 +1,6 @@
 #include "mppi_control/mppi_node.hpp"
 
-namespace mpppi {
+namespace mppi {
 MppiNode : MppiNode() : private_nh_("~") {
 
   // variables
@@ -70,6 +70,8 @@ void MppiNode::run() {
 
     // create mppi instance
     if (!mppi_.has_value()) {
+      // TODO
+      mppi_ = MPPI();
     }
 
     // check for goal
@@ -86,16 +88,17 @@ void MppiNode::run() {
       continue;
     }
 
-    // TODO: control loop
-    auto ctr = std::make_pair(1.0, 0.0);
-    Eigen::MatrixXf &optimal_traj;
-    std::vector<Eigen::MatrixXf> sampled_traj_list;
-
+    auto opt = mppi_.value().compute_optimal_input(
+        path_to_matrix(path_.value()),
+        odometry_to_matrix(latest_odom_.value()));
+    Eigen::MatrixXf ctrl = std::get<0>(opt);
+    Eigen::MatrixXf x_opt = std::get<1>(opt);
+    Eigen::MatrixXf x_sampled = std::get<2>(opt);
     auto speed = std::hypot(latest_odom_.value().twist.twist.linear.x,
                             latest_odom_.value().twist.twist.linear.y) +
                  ctrl.second * 1. / rate_;
     publish_mpc_cmd(speed, ctrl.first);
-    publish_rviz_markers();
+    publish_rviz_markers(x_opt, x_sampled);
 
     loop_rate.sleep();
   }
@@ -205,4 +208,4 @@ MppiNode::obstacles_to_matrix(const vision_msgs::Detection3DArray &obs) const {
   return tmp;
 }
 
-} // namespace mpppi
+} // namespace mppi
