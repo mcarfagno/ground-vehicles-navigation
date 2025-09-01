@@ -43,15 +43,15 @@ private:
 
   // TODO: redo these ?
   int mpc_horizon_steps_;
+  int mpc_rollouts_;
   float rate_;
   float obs_safety_dist_;
   float x_weight_;
   float y_weight_;
   float yaw_weight_;
   float speed_weight_;
-  float steer_rate_weight_;
-  float acc_rate_weight_;
-  float dist_weight_;
+  float steer_noise_;
+  float acc_noise_;
 
   std::optional<Mppi> mppi_;
 

@@ -11,18 +11,17 @@ MppiNode : MppiNode() : private_nh_("~") {
 
   // params
   private_nh_.param("rate", rate_, float(20.0));
-  // TODO: update all of these
-  private_nh_.param("control_horizon_len", mpc_horizon_steps_, int(10));
+  private_nh_.param("control_horizon_len", mpc_horizon_steps_, int(30));
+  private_nh_.param("number_of_samples", mpc_rollouts_, int(1000));
   private_nh_.param("obstacles_safety_distance", obs_safety_dist_, float(0.25));
 
   // weights of the cost function terms
-  private_nh_.param("x_pos_error_weight", x_weight_, float(1.0));
-  private_nh_.param("y_pos_error_weight", y_weight_, float(1.0));
-  private_nh_.param("heading_pos_error_weight", yaw_weight_, float(0.1));
-  private_nh_.param("speed_error_weight", speed_weight_, float(1.0));
-  private_nh_.param("acceleration_rate_weight", acc_rate_weight_, float(10.0));
-  private_nh_.param("steer_rate_weight", steer_rate_weight_, float(100.0));
-  private_nh_.param("obstacle_distance_weight", dist_weight_, float(5.0));
+  private_nh_.param("x_pos_error_weight", x_weight_, float(50.0));
+  private_nh_.param("y_pos_error_weight", y_weight_, float(50.0));
+  private_nh_.param("heading_pos_error_weight", yaw_weight_, float(1.0));
+  private_nh_.param("speed_error_weight", speed_weight_, float(20.0));
+  private_nh_.param("steer_noise", steer_noise_, float(0.5));
+  private_nh_.param("acceleration_noise", acc_noise_, float(0.1));
 
   // publishers
   cmd_pub_ =
@@ -70,8 +69,13 @@ void MppiNode::run() {
 
     // create mppi instance
     if (!mppi_.has_value()) {
-      // TODO
-      mppi_ = MPPI();
+      mppi_ = MPPI(delta_t = 1. / rate_, horizon_step_T = mpc_horizon_steps_,
+                   number_of_samples_K = mpc_rollouts_;
+                   sigma = Eigen::Matrix2f(steer_noise_, 0.0, 0.0, acc_noise_),
+                   stage_cost_weight = Eigen::Vector4f(
+                       x_weight_, y_weight_, yaw_weight_, speed_weight_),
+                   terminal_cost_weight = Eigen::Vector4f(
+                       x_weight_, y_weight_, yaw_weight_, speed_weight_));
     }
 
     // check for goal
@@ -83,14 +87,15 @@ void MppiNode::run() {
       path_ = std::nullopt;
       obstacles_ = std::nullopt;
       latest_odom_ = std::nullopt;
+      mppi_->reset();
       publish_mpc_cmd(0.0, 0.0);
 
       continue;
     }
 
-    auto opt = mppi_.value().compute_optimal_input(
-        path_to_matrix(path_.value()),
-        odometry_to_matrix(latest_odom_.value()));
+    auto opt =
+        mppi_->compute_optimal_input(path_to_matrix(path_.value()),
+                                     odometry_to_matrix(latest_odom_.value()));
     Eigen::MatrixXf ctrl = std::get<0>(opt);
     Eigen::MatrixXf x_opt = std::get<1>(opt);
     Eigen::MatrixXf x_sampled = std::get<2>(opt);

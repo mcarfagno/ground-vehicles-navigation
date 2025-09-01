@@ -19,27 +19,31 @@ public:
   explicit MPPI(float delta_t = 0.05, std::size_t horizon_step_T = 30,
                 std::size_t number_of_samples_K = 1000,
                 float param_exploration = 0.0, float param_lambda = 50.0,
-                float param_alpha = 1.0
-                // TODO: sort out these 3
-                //  float sigma,
-                //  float stage_cost_weight, // weight for [x, y, yaw, v]
-                //  float terminal_cost_weight, // weight for [x, y, yaw, v]
+                float param_alpha = 1.0 Eigen::Matrix2f sigma =
+                    Eigen::Matrix2f(0.5, 0.0, 0.0, 0.1),
+                Eigen::Vector4f stage_cost_weight = Eigen::Vector4f(
+                    50.0, 50.0, 1.0, 20.0), // weight for [x, y, yaw, v]
+                Eigen::Vector4f terminal_cost_weight = Eigen::Vector4f(
+                    50.0, 50.0, 1.0, 20.0) // weight for [x, y, yaw, v]
                 )
       : dt_(delta_t), T_(horizon_step_T), K_(number_of_samples_K),
         param_exploration_(param_exploration), param_lambda_(param_lambda),
         param_alpha_(param_alpha), {
 
-    // wtf is gamma?
     param_gamma_ = param_lambda_ * (1.0 - (param_alpha_));
-    sigma_ << 0.5, 0.0, 0.0, 0.1;
-    stage_cost_weight_ << 50.0, 50.0, 1.0, 20.0;
-    terminal_cost_weight_ << 50.0, 50.0, 1.0, 20.0;
+    sigma_ = sigma;
+    stage_cost_weight_ = stage_cost_weight;
+    terminal_cost_weight_ << terminal_cost_weight;
 
-    // TODO: this should be called on reset
     u_prev_.setZero(T_, dim_u_);
   }
 
   ~MPPI() {}
+
+  /*
+   * @brief resets the nominal control sequence
+   * */
+  void reset() { u_prev_.setZero(T_, dim_u_); }
 
   // TODO: add obstacles
   std::tuple<MppiCmd, Eigen::MatrixXf, std::vector<Eigen::MatrixXf>>
@@ -72,7 +76,6 @@ private:
   float jerk_max_abs_ = 1.5;       // [m/sss]
   float steer_max_abs_ = 0.61;     // [rad]
   float steer_rate_max_abs_ = 0.5; // [rad/s]
-                                   //
   /**
    * @brief reinterpolates a trajectory to one of the correct
    * size and starting point
