@@ -109,6 +109,11 @@ private:
    * @brief terminal cost function
    * */
   float phi_(const Eigen::Vector4f &x_t, const Eigen::Vector4f &x_ref) const;
+
+  /**
+   * @brief computes weights for each sample
+   * */
+  Eigen::VectorXf compute_weights_(const Eigen::ArrayXf &S) const;
 };
 
 } // namespace mppi

@@ -55,11 +55,7 @@ MPPI::compute_optimal_input(const Eigen::MatrixXf &trajectory,
   }
 
   // compute information theoretic weights for each sample
-  const float rho = S.minCoeff();
-  const float eta = (-1.0 / param_lambda_ * (S - rho)).exp().sum();
-
-  Eigen::VectorXf w = Eigen::VectorXf::Zero(K_);
-  w = (1.0 / eta) * ((-1.0 / param_lambda_) * (S - rho)).exp();
+  Eigen::VectorXf w = compute_weights_(S);
 
   // update control input sequence
   Eigen::ArrayXXf w_epsilon = Eigen::ArrayXXf::Zero(T_, dim_u_);
@@ -137,6 +133,15 @@ Eigen::MatrixXf MPPI::compute_epsilon_() const {
   }
 
   return epsilon;
+}
+
+Eigen::VectorXf MPPI::compute_weights_(const Eigen::ArrayXf &S) const {
+  const float rho = S.minCoeff();
+  const float eta = (-1.0 / param_lambda_ * (S - rho)).exp().sum();
+
+  Eigen::VectorXf w = Eigen::VectorXf::Zero(K_);
+  w = (1.0 / eta) * ((-1.0 / param_lambda_) * (S - rho)).exp();
+  return w;
 }
 
 Eigen::MatrixXf
