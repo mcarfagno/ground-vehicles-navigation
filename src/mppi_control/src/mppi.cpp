@@ -16,7 +16,7 @@ MPPI::compute_optimal_input(const Eigen::MatrixXf &trajectory,
       reinterpolate_reference_trajectory(trajectory, x0);
 
   // buffer for rollout costs
-  Eigen::VectorXf S = Eigen::VectorXf::Zero(K_);
+  Eigen::ArrayXf S = Eigen::ArrayXf::Zero(K_);
   std::vector<Eigen::MatrixXf> epsilon_buff(K_);
   std::vector<Eigen::MatrixXf> sampled_buff(K_);
 
@@ -56,21 +56,17 @@ MPPI::compute_optimal_input(const Eigen::MatrixXf &trajectory,
 
   // compute information theoretic weights for each sample
   const float rho = S.minCoeff();
-  const float eta = (-1.0 / param_lambda_ * (S.array() - rho)).exp().sum();
+  const float eta = (-1.0 / param_lambda_ * (S - rho)).exp().sum();
 
   Eigen::VectorXf w = Eigen::VectorXf::Zero(K_);
-  for (std::size_t i = 0; i < w.size(); i++) {
-    w(i) = (1.0 / eta) * std::exp((-1.0 / param_lambda_) * (S(i) - rho));
-  }
+  w = (1.0 / eta) * ((-1.0 / param_lambda_) * (S - rho)).exp();
 
   // update control input sequence
-  Eigen::MatrixXf w_epsilon = Eigen::MatrixXf::Zero(T_, dim_u_);
-  for (std::size_t t = 0; t < T_; t++) {
-    for (std::size_t k = 0; k < K_; k++) {
-      w_epsilon.row(t) += w(k) * epsilon_buff[k].row(t);
-    }
+  Eigen::ArrayXXf w_epsilon = Eigen::ArrayXXf::Zero(T_, dim_u_);
+  for (std::size_t k = 0; k < K_; k++) {
+    w_epsilon += w(k) * epsilon_buff[k].array();
   }
-  u = u + w_epsilon;
+  u = u.array() + w_epsilon;
 
   // set up for next iteration
   u_prev_ = u;
