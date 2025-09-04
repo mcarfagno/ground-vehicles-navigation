@@ -64,44 +64,4 @@ std::pair<double, double> latlon_to_XY(double lat0, double lon0, double lat1,
   return std::make_pair(X, Y);
 }
 
-/**
- * @brief Shift the columns of a 2D Eigen Array or scalar values of
- *    1D Eigen Array by 1 place.
- * @param e Eigen Array
- * @param direction direction in which Array will be shifted.
- *     1 for shift in right direction and -1 for left direction.
- * SOURCE: nav2
- * https://github.com/ros-navigation/navigation2/nav2_mppi_controller/
- */
-inline void shiftColumnsByOnePlace(Eigen::Ref<Eigen::MatrixXf> e,
-                                   int direction) {
-  int size = e.size();
-  if (size == 1) {
-    return;
-  }
-  if (abs(direction) != 1) {
-    throw std::logic_error(
-        "Invalid direction, only 1 and -1 are valid values.");
-  }
-
-  if ((e.cols() == 1 || e.rows() == 1) && size > 1) {
-    auto start_ptr = direction == 1 ? e.data() + size - 2 : e.data() + 1;
-    auto end_ptr = direction == 1 ? e.data() : e.data() + size - 1;
-    while (start_ptr != end_ptr) {
-      *(start_ptr + direction) = *start_ptr;
-      start_ptr -= direction;
-    }
-    *(start_ptr + direction) = *start_ptr;
-  } else {
-    auto start_ptr =
-        direction == 1 ? e.data() + size - 2 * e.rows() : e.data() + e.rows();
-    auto end_ptr = direction == 1 ? e.data() : e.data() + size - e.rows();
-    auto span = e.rows();
-    while (start_ptr != end_ptr) {
-      std::copy(start_ptr, start_ptr + span, start_ptr + direction * span);
-      start_ptr -= (direction * span);
-    }
-    std::copy(start_ptr, start_ptr + span, start_ptr + direction * span);
-  }
-}
 #endif

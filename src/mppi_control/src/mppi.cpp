@@ -36,21 +36,27 @@ MPPI::compute_optimal_input(const Eigen::MatrixXf &trajectory,
     // loop for time step t = 1 ~ T
     for (std::size_t t = 1; t < T_ + 1; t++) {
 
-      // TODO: exploit or explore ?
-      v.row(t - 1) = u.row(t - 1) + epsilon.row(t - 1);
+      // noisy control input for this step
+      if (k < (1.0 - param_exploration_) * K_) {
+        // exploit
+        v.row(t - 1) = u.row(t - 1) + epsilon.row(t - 1);
+      } else {
+        // explore
+        v.row(t - 1) = epsilon.row(t - 1);
+      }
 
       // update x
       x = F_(x, g_(v.row(t - 1)));
       sampled_trajectory.row(t - 1) = x;
 
       // accumulate stage cost
-      S(k) = S(k) + c_(x, reference.row(t - 1)) +
-             param_gamma_ * u.row(t - 1) * sigma_.inverse() *
-                 v.row(t - 1).transpose();
+      S(k) += c_(x, reference.row(t - 1)) + param_gamma_ * u.row(t - 1) *
+                                                sigma_.inverse() *
+                                                v.row(t - 1).transpose();
     }
 
     // terminal cost
-    S(k) = S(k) + phi_(x, reference.row(t - 1));
+    S(k) += phi_(x, reference.row(T_ - 1));
     sampled_buff[k] = sampled_trajectory;
   }
 
@@ -66,8 +72,10 @@ MPPI::compute_optimal_input(const Eigen::MatrixXf &trajectory,
 
   // set up for next iteration
   u_prev_ = u;
-  utils::shiftColumnsByOnePlace(u_prev_, -1);
-  u_prev_.row(u_prev_.rows() - 1) = u_prev_.row(u.rows() - 2);
+
+  // shift inputs by 1 timestep
+  u_prev_.block(0, 0, u_prev_.rows() - 1, u_prev_.cols()) =
+      u_prev_.block(1, 0, u_prev_.rows() - 1, u_prev_.cols());
 
   // calculate optimal trajectory
   Eigen::MatrixXf optimal_trajectory = Eigen::MatrixXf::Zero(T_, dim_x_);
