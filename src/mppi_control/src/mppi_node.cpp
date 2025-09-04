@@ -145,8 +145,7 @@ void MppiNode::publish_rviz_markers(
   marker_arr.markers.push_back(marker);
 
   // 2- publish sampled trajectories
-  // NOTE: number of samples is very large
-  for (std::size_t i = 0; i < sampled_traj_list.size(); i = i + 10) {
+  for (std::size_t i = 0; i < sampled_traj_list.size(); i++) {
     const auto &sample = sampled_traj_list[i];
     visualization_msgs::Marker marker;
     marker.header.frame_id = "world";

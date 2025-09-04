@@ -83,8 +83,23 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
     optimal_trajectory.row(t) = x;
   }
 
+  // return best X samples
+  best_x = std::ceil(K_ / 10);
+  std::vector<int> costs_rank_(K_);
+  std::iota(costs_rank_.begin(), costs_rank_.end(),
+            0); // initialize costs_rank_ with 0, 1, 2, ..., K-1
+  std::sort(costs_rank_.begin(), costs_rank_.end(), [&](int i, int j) {
+    return S[i] < S[j];
+  }); // sort costs_rank_ based on score value
+  // NOTE: best (minimum) cost is costs_[costs_rank_[0]], worst (maximum) cost
+  // is costs_[costs_rank_[K-1]]
+  std::vector<MatrixXf> best_samples(best_x);
+  for (std::size_t i = 0; i < best_x; i++) {
+    best_samples[i] = std::move(sampled_buff[costs_rank_[i]]);
+  }
+
   return std::make_tuple(std::make_pair(u(0, 0), u(0, 1)), optimal_trajectory,
-                         sampled_buff);
+                         best_samples);
 }
 
 Vector4f MPPI::F_(const Vector4f &x_t, const Vector2f &u_t) const {
