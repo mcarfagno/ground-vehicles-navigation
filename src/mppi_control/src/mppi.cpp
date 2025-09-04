@@ -4,21 +4,19 @@
 #include "mppi_control/mppi.hpp"
 namespace mppi {
 
-std::tuple<MppiCmd, Eigen::MatrixXf, std::vector<Eigen::MatrixXf>>
-MPPI::compute_optimal_input(const Eigen::MatrixXf &trajectory,
-                            const Eigen::Vector4f &x0) {
+std::tuple<MppiCmd, MatrixXf, std::vector<MatrixXf>>
+MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
 
   // nominal control sequence
-  Eigen::MatrixXf u = prev_u_;
+  ArrayXXf u = prev_u_;
 
   // N points -> 1 for each horizon step
-  const Eigen::MatrixXf reference =
-      reinterpolate_reference_trajectory(trajectory, x0);
+  const MatrixXf reference = reinterpolate_reference_trajectory(trajectory, x0);
 
   // buffer for rollout costs
-  Eigen::ArrayXf S = Eigen::ArrayXf::Zero(K_);
-  std::vector<Eigen::MatrixXf> epsilon_buff(K_);
-  std::vector<Eigen::MatrixXf> sampled_buff(K_);
+  ArrayXf S = ArrayXf::Zero(K_);
+  std::vector<ArrayXXf> epsilon_buff(K_);
+  std::vector<MatrixXf> sampled_buff(K_);
 
   // loop for 0 ~ K-1 samples
   for (std::size_t k = 0; k < K_; k++) {
@@ -30,8 +28,8 @@ MPPI::compute_optimal_input(const Eigen::MatrixXf &trajectory,
     epsilon_buff[k] = epsilon;
 
     // buffer for sampled control sequence
-    Eigen::MatrixXf v = Eigen::MatrixXf::Zero(u.rows(), u.cols());
-    Eigen::MatrixXf sampled_trajectory = Eigen::MatrixXf::Zero(T_, dim_x_);
+    MatrixXf v = MatrixXf::Zero(u.rows(), u.cols());
+    MatrixXf sampled_trajectory = MatrixXf::Zero(T_, dim_x_);
 
     // loop for time step t = 1 ~ T
     for (std::size_t t = 1; t < T_ + 1; t++) {
@@ -61,14 +59,14 @@ MPPI::compute_optimal_input(const Eigen::MatrixXf &trajectory,
   }
 
   // compute information theoretic weights for each sample
-  Eigen::VectorXf w = compute_weights_(S);
+  VectorXf w = compute_weights_(S);
 
   // update control input sequence
-  Eigen::ArrayXXf w_epsilon = Eigen::ArrayXXf::Zero(T_, dim_u_);
+  ArrayXXf w_epsilon = ArrayXXf::Zero(T_, dim_u_);
   for (std::size_t k = 0; k < K_; k++) {
-    w_epsilon += w(k) * epsilon_buff[k].array();
+    w_epsilon += w(k) * epsilon_buff[k];
   }
-  u = u.array() + w_epsilon;
+  u = u + w_epsilon;
 
   // set up for next iteration
   u_prev_ = u;
@@ -78,8 +76,8 @@ MPPI::compute_optimal_input(const Eigen::MatrixXf &trajectory,
       u_prev_.block(1, 0, u_prev_.rows() - 1, u_prev_.cols());
 
   // calculate optimal trajectory
-  Eigen::MatrixXf optimal_trajectory = Eigen::MatrixXf::Zero(T_, dim_x_);
-  Eigen::Vector4f x = x0;
+  MatrixXf optimal_trajectory = MatrixXf::Zero(T_, dim_x_);
+  Vector4f x = x0;
   for (std::size_t t = 0; t < T_; t++) {
     x = F_(x, g_(u.row(t)));
     optimal_trajectory.row(t) = x;
@@ -89,8 +87,7 @@ MPPI::compute_optimal_input(const Eigen::MatrixXf &trajectory,
                          sampled_buff);
 }
 
-Eigen::Vector4f MPPI::F_(const Eigen::Vector4f &x_t,
-                         const Eigen::Vector2f &u_t) const {
+Vector4f MPPI::F_(const Vector4f &x_t, const Vector2f &u_t) const {
   const auto x = x_t(0);
   const auto y = x_t(1);
   const auto yaw = x_t(2);
@@ -99,20 +96,20 @@ Eigen::Vector4f MPPI::F_(const Eigen::Vector4f &x_t,
   const auto steer = u_t(0);
   const auto accel = u_t(1);
 
-  return Eigen::Vector4f(
-      x + v * std::cos(yaw) * dt_, y + v * std::sin(yaw) * dt_,
-      yaw + v / wheel_base_ * std::tan(steer) * dt_, v + accel * dt_);
+  return Vector4f(x + v * std::cos(yaw) * dt_, y + v * std::sin(yaw) * dt_,
+                  yaw + v / wheel_base_ * std::tan(steer) * dt_,
+                  v + accel * dt_);
 }
 
-Eigen::Vector2f MPPI::g_(const Eigen::Vector2f &u_t) const {
-  return Eigen::Vector2f(std::clamp(u_t(0), -steer_max_abs_, steer_max_abs_),
-                         std::clamp(u_t(1), -a_max_abs_, a_max_abs_));
+Vector2f MPPI::g_(const Vector2f &u_t) const {
+  return Vector2f(std::clamp(u_t(0), -steer_max_abs_, steer_max_abs_),
+                  std::clamp(u_t(1), -a_max_abs_, a_max_abs_));
 }
 
-float MPPI::c_(const Eigen::Vector4f &x_t, const Eigen::Vector4f &x_ref) const {
+float MPPI::c_(const Vector4f &x_t, const Vector4f &x_ref) const {
 
   // Compute the cost
-  Eigen::Vector4f x_err = x_t - x_ref;
+  Vector4f x_err = x_t - x_ref;
   float stage_cost =
       x_err.transpose() * stage_cost_weight_.asDiagonal() * x_err;
 
@@ -120,11 +117,10 @@ float MPPI::c_(const Eigen::Vector4f &x_t, const Eigen::Vector4f &x_ref) const {
   return stage_cost;
 }
 
-float MPPI::phi_(const Eigen::Vector4f &x_t,
-                 const Eigen::Vector4f &x_ref) const {
+float MPPI::phi_(const Vector4f &x_t, const Vector4f &x_ref) const {
 
   // Compute the cost
-  Eigen::Vector4f x_err = x_t - x_ref;
+  Vector4f x_err = x_t - x_ref;
   float stage_cost =
       x_err.transpose() * stage_cost_weight_.asDiagonal() * x_err;
 
@@ -132,8 +128,8 @@ float MPPI::phi_(const Eigen::Vector4f &x_t,
   return stage_cost;
 }
 
-Eigen::MatrixXf MPPI::compute_epsilon_() const {
-  Eigen::MatrixXf epsilon = Eigen::MatrixXf::Zero(T_, dim_u_);
+ArrayXXf MPPI::compute_epsilon_() const {
+  ArrayXXf epsilon = ArrayXXf::Zero(T_, dim_u_);
   normal_random_variable sample{sigma_};
 
   for (std::size_t i = 0; i < epsilon.rows(); i++) {
@@ -143,18 +139,17 @@ Eigen::MatrixXf MPPI::compute_epsilon_() const {
   return epsilon;
 }
 
-Eigen::VectorXf MPPI::compute_weights_(const Eigen::ArrayXf &S) const {
+VectorXf MPPI::compute_weights_(const ArrayXf &S) const {
   const float rho = S.minCoeff();
   const float eta = (-1.0 / param_lambda_ * (S - rho)).exp().sum();
 
-  Eigen::VectorXf w = Eigen::VectorXf::Zero(K_);
+  VectorXf w = VectorXf::Zero(K_);
   w = (1.0 / eta) * ((-1.0 / param_lambda_) * (S - rho)).exp();
   return w;
 }
 
-Eigen::MatrixXf
-MPPI::reinterpolate_reference_trajectory(const Eigen::MatrixXf &traj,
-                                         const Eigen::Vector4f &x) const {
+MatrixXf MPPI::reinterpolate_reference_trajectory(const MatrixXf &traj,
+                                                  const Vector4f &x) const {
   using Spline1D = Eigen::Spline<float, 1, 2>;
   using SplineFitting1D = Eigen::SplineFitting<Spline1D>;
 
@@ -183,7 +178,7 @@ MPPI::reinterpolate_reference_trajectory(const Eigen::MatrixXf &traj,
   // spaced given the average speed
   const float v = traj.col(3).mean();
 
-  Eigen::VectorXf intp_pts(T_);
+  VectorXf intp_pts(T_);
   for (std::size_t i = 0; i < T_; i++) {
     intp_pts(i) = std::clamp(start_dist + (i + 1) * v * dt_, cdist.head(1)[0],
                              cdist.tail(1)[0]);
