@@ -96,9 +96,9 @@ void MppiNode::run() {
     auto opt =
         mppi_->compute_optimal_input(path_to_matrix(path_.value()),
                                      odometry_to_matrix(latest_odom_.value()));
-    Eigen::MatrixXf ctrl = std::get<0>(opt);
-    Eigen::MatrixXf x_opt = std::get<1>(opt);
-    Eigen::MatrixXf x_sampled = std::get<2>(opt);
+    const auto ctrl = std::get<0>(opt); // (steer,acc)
+    const Eigen::MatrixXf x_opt = std::get<1>(opt);
+    const auto x_sampled = std::get<2>(opt);
     auto speed = std::hypot(latest_odom_.value().twist.twist.linear.x,
                             latest_odom_.value().twist.twist.linear.y) +
                  ctrl.second * 1. / rate_;
@@ -118,7 +118,7 @@ void MppiNode::publish_mpc_cmd(double speed, double steer) {
 
 void MppiNode::publish_rviz_markers(
     const Eigen::MatrixXf &optimal_traj,
-    const std::vector<Eigen::MatrixXf> sampled_traj_list) {
+    const std::vector<Eigen::ArrayXXf> sampled_traj_list) {
   visualization_msgs::MarkerArray marker_arr;
 
   // 1- publish optimized trajectory
@@ -135,14 +135,14 @@ void MppiNode::publish_rviz_markers(
   marker.color.b = 0.0;
   marker.color.a = 1.0;
   marker.frame_locked = true;
+  marker.lifetime = ros::Duration(1./rate_);
 
   marker.points.resize(optimal_traj.rows());
   for (std::size_t i = 0; i < optimal_traj.rows(); i++) {
     marker.points[i].x = predicted_state_traj(i, 0);
     marker.points[i].y = predicted_state_traj(i, 1);
   }
-
-  marker_arr.markers.push_back(marker);
+  marker_arr.markers[i]=marker;
 
   // 2- publish sampled trajectories
   for (std::size_t i = 0; i < sampled_traj_list.size(); i++) {
@@ -160,13 +160,14 @@ void MppiNode::publish_rviz_markers(
     marker.color.b = 0.5;
     marker.color.a = 0.35;
     marker.frame_locked = true;
+    marker.lifetime = ros::Duration(1./rate_);
 
     marker.points.resize(sample.rows());
     for (std::size_t i = 0; i < sample.rows(); i++) {
       sample.points[i].x = predicted_state_traj(i, 0);
       sample.points[i].y = predicted_state_traj(i, 1);
     }
-    marker_arr.markers.push_back(marker);
+    marker_arr.markers[i]=marker;
   }
 
   viz_pub_.publish(std::move(marker_arr));
