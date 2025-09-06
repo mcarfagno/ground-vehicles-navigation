@@ -28,24 +28,24 @@ class MPPI {
 public:
   explicit MPPI(
       const float delta_t = 0.05, const std::size_t horizon_step_T = 30,
-      const std::size_t number_of_samples_K = 1000, const float param_exploration = 0.0,
-      const float param_lambda = 50.0,
+      const std::size_t number_of_samples_K = 1000,
+      const float param_exploration = 0.0, const float param_lambda = 50.0,
       const float param_alpha = 1.0
-      //Matrix2f sigma = Matrix2f(0.5, 0.0, 0.0, 0.1),
-      //Vector4f stage_cost_weight = Vector4f(50.0, 50.0, 1.0,
-      //                                      20.0), // weight for [x, y, yaw, v]
-      //Vector4f terminal_cost_weight =
-      //   Vector4f(50.0, 50.0, 1.0, 20.0) // weight for [x, y, yaw, v]
+      // Matrix2f sigma = Matrix2f(0.5, 0.0, 0.0, 0.1),
+      // Vector4f stage_cost_weight = Vector4f(50.0, 50.0, 1.0,
+      //                                       20.0), // weight for [x, y, yaw,
+      //                                       v]
+      // Vector4f terminal_cost_weight =
+      //    Vector4f(50.0, 50.0, 1.0, 20.0) // weight for [x, y, yaw, v]
       )
       : dt_(delta_t), T_(horizon_step_T), K_(number_of_samples_K),
         param_exploration_(param_exploration), param_lambda_(param_lambda),
         param_alpha_(param_alpha) {
 
-
     param_gamma_ = param_lambda_ * (1.0 - (param_alpha_));
     // TODO: parametrise
     sigma_ << 0.5, 0.0, 0.0, 0.1;
-    stage_cost_weight_ << 50.0, 50.0, 1.0,20.0; // weight for [x, y, yaw, v]
+    stage_cost_weight_ << 50.0, 50.0, 1.0, 20.0;    // weight for [x, y, yaw, v]
     terminal_cost_weight_ << 50.0, 50.0, 1.0, 20.0; // weight for [x, y, yaw, v]
 
     u_prev_.setZero(T_, dim_u_);

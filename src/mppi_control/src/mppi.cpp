@@ -168,7 +168,7 @@ MatrixXf MPPI::reinterpolate_reference_trajectory(const MatrixXf &traj,
   using Spline1D = Eigen::Spline<float, 1, 2>;
   using SplineFitting1D = Eigen::SplineFitting<Spline1D>;
 
-  Eigen::MatrixXf waypoints = Eigen::MatrixXf(T_,dim_x_);
+  Eigen::MatrixXf waypoints = Eigen::MatrixXf(T_, dim_x_);
 
   // Find the index of the closest trajectory point to the vehicle.
   std::vector<float> distances(traj.rows());

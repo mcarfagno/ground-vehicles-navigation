@@ -1,7 +1,7 @@
 #include "mppi_control/mppi_node.hpp"
 
 namespace mppi {
-MppiNode :: MppiNode() : private_nh_("~") {
+MppiNode ::MppiNode() : private_nh_("~") {
 
   // variables
   path_ = std::nullopt;
@@ -69,8 +69,8 @@ void MppiNode::run() {
 
     // create mppi instance
     if (!mppi_.has_value()) {
-      auto mppi = MPPI(1. / rate_, mpc_horizon_steps_,
-                   mpc_rollouts_,0.0,50.0,1.0);
+      auto mppi =
+          MPPI(1. / rate_, mpc_horizon_steps_, mpc_rollouts_, 0.0, 50.0, 1.0);
       mppi_.emplace(mppi);
     }
 
@@ -131,7 +131,7 @@ void MppiNode::publish_rviz_markers(
   marker.color.b = 0.0;
   marker.color.a = 1.0;
   marker.frame_locked = true;
-  marker.lifetime = ros::Duration(1./rate_);
+  marker.lifetime = ros::Duration(1. / rate_);
 
   marker.points.resize(optimal_traj.rows());
   for (std::size_t i = 0; i < optimal_traj.rows(); i++) {
@@ -156,7 +156,7 @@ void MppiNode::publish_rviz_markers(
     s.color.b = 0.5;
     s.color.a = 0.35;
     s.frame_locked = true;
-    s.lifetime = ros::Duration(1./rate_);
+    s.lifetime = ros::Duration(1. / rate_);
 
     s.points.resize(sample.rows());
     for (std::size_t i = 0; i < sample.rows(); i++) {
@@ -183,8 +183,9 @@ Eigen::MatrixXf MppiNode::path_to_matrix(const nav_msgs::Path &path) const {
   Eigen::MatrixXf tmp;
   tmp.resize(path.poses.size(), 4);
   for (std::size_t i = 0; i < path.poses.size(); i++) {
-    tmp.row(i) = Eigen::Vector4f(path.poses[i].pose.position.x, path.poses[i].pose.position.y,
-                  tf::getYaw(path.poses[i].pose.orientation), MPPI_REF_SPEED);
+    tmp.row(i) = Eigen::Vector4f(
+        path.poses[i].pose.position.x, path.poses[i].pose.position.y,
+        tf::getYaw(path.poses[i].pose.orientation), MPPI_REF_SPEED);
   }
 
   // workaround for lack of heading from GPS path
@@ -204,14 +205,13 @@ MppiNode::obstacles_to_matrix(const vision_msgs::Detection3DArray &obs) const {
   tmp.resize(obs.detections.size(), 3);
   for (std::size_t i = 0; i < obs.detections.size(); i++) {
     tmp.row(i) = Eigen::Vector3f(obs.detections[i].bbox.center.position.x,
-                  obs.detections[i].bbox.center.position.y,
-                  obs.detections[i].bbox.size.x);
+                                 obs.detections[i].bbox.center.position.y,
+                                 obs.detections[i].bbox.size.x);
   }
   return tmp;
 }
 
 } // namespace mppi
-
 
 /**
  * @brief Converts latitude and longitude to global X, Y coordinates,

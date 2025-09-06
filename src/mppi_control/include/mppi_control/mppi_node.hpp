@@ -63,12 +63,12 @@ private:
   Eigen::Vector4f odometry_to_matrix(const nav_msgs::Odometry &odom) const;
   Eigen::MatrixXf
   obstacles_to_matrix(const vision_msgs::Detection3DArray &obs) const;
-Eigen::MatrixXf path_to_matrix(const nav_msgs::Path &path) const;
+  Eigen::MatrixXf path_to_matrix(const nav_msgs::Path &path) const;
 
   void publish_mpc_cmd(double speed, double steer);
-void publish_rviz_markers(
-    const Eigen::MatrixXf &optimal_traj,
-    const std::vector<Eigen::MatrixXf> sampled_traj_list);
+  void
+  publish_rviz_markers(const Eigen::MatrixXf &optimal_traj,
+                       const std::vector<Eigen::MatrixXf> sampled_traj_list);
 };
 
 } // namespace mppi
