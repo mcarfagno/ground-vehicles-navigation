@@ -68,6 +68,8 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
   }
   u = u.array() + w_epsilon;
 
+  // TODO: a smoothing filer over u
+
   // set up for next iteration
   u_prev_ = u;
 
@@ -90,7 +92,9 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
             0); // initialize costs_rank_ with 0, 1, 2, ..., K-1
   std::sort(costs_rank_.begin(), costs_rank_.end(), [&](int i, int j) {
     return S[i] < S[j];
-  }); // sort costs_rank_ based on score value
+  });
+
+  // sort costs_rank_ based on score value
   // NOTE: best (minimum) cost is costs_[costs_rank_[0]], worst (maximum) cost
   // is costs_[costs_rank_[K-1]]
   std::vector<MatrixXf> best_samples(best_x);
@@ -155,6 +159,7 @@ ArrayXXf MPPI::compute_epsilon_() const {
 }
 
 VectorXf MPPI::compute_weights_(const ArrayXf &S) const {
+  // softmax scaling constant
   const float rho = S.minCoeff();
   const float eta = (-1.0 / param_lambda_ * (S - rho)).exp().sum();
 

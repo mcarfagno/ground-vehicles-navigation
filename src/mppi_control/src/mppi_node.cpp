@@ -70,7 +70,7 @@ void MppiNode::run() {
     // create mppi instance
     if (!mppi_.has_value()) {
       auto mppi =
-          MPPI(1. / rate_, mpc_horizon_steps_, mpc_rollouts_, 0.0, 50.0, 1.0);
+          MPPI(1. / rate_, mpc_horizon_steps_, mpc_rollouts_, 0.0, 50.0, 0.015);
       mppi_.emplace(mppi);
     }
 
