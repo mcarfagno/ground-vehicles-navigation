@@ -1,5 +1,5 @@
 #include <stdexcept>
-#include <eigen3/unsupported/Eigen/Splines>
+#include <unsupported/Eigen/Splines>
 
 #include "mppi_control/mppi.hpp"
 namespace mppi {
@@ -8,7 +8,7 @@ std::tuple<MppiCmd, MatrixXf, std::vector<MatrixXf>>
 MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
 
   // nominal control sequence
-  ArrayXXf u = prev_u_;
+  MatrixXf u = u_prev_;
 
   // N points -> 1 for each horizon step
   const MatrixXf reference = reinterpolate_reference_trajectory(trajectory, x0);
@@ -37,7 +37,7 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
       // noisy control input for this step
       if (k < (1.0 - param_exploration_) * K_) {
         // exploit
-        v.row(t - 1) = u.row(t - 1) + epsilon.row(t - 1);
+        v.row(t - 1) = u.row(t - 1).array() + epsilon.row(t - 1);
       } else {
         // explore
         v.row(t - 1) = epsilon.row(t - 1);
@@ -66,7 +66,7 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
   for (std::size_t k = 0; k < K_; k++) {
     w_epsilon += w(k) * epsilon_buff[k];
   }
-  u = u + w_epsilon;
+  u = u.array() + w_epsilon;
 
   // set up for next iteration
   u_prev_ = u;
@@ -84,7 +84,7 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
   }
 
   // return best X samples
-  best_x = std::ceil(K_ / 10);
+  const auto best_x = std::ceil(K_ / 10);
   std::vector<int> costs_rank_(K_);
   std::iota(costs_rank_.begin(), costs_rank_.end(),
             0); // initialize costs_rank_ with 0, 1, 2, ..., K-1
@@ -168,6 +168,17 @@ MatrixXf MPPI::reinterpolate_reference_trajectory(const MatrixXf &traj,
   using Spline1D = Eigen::Spline<float, 1, 2>;
   using SplineFitting1D = Eigen::SplineFitting<Spline1D>;
 
+  Eigen::MatrixXf waypoints = Eigen::MatrixXf(T_,nx_);
+
+  // Find the index of the closest trajectory point to the vehicle.
+  std::vector<float> distances(traj.rows());
+  for (std::size_t i = 0; i < traj.rows(); i++) {
+    distances[i] = std::hypot(x(0) - traj(i, 0), x(1) - traj(i, 1));
+  }
+
+  auto min_element = std::min_element(distances.begin(), distances.end());
+  std::size_t closest_idx = std::distance(distances.begin(), min_element);
+
   // find target states by interpolating along trajectory length.
   // compute first the distance along the trajectory for each traj point
   // these will be the interpolation knot points
@@ -178,22 +189,14 @@ MatrixXf MPPI::reinterpolate_reference_trajectory(const MatrixXf &traj,
                                          traj(i, 1) - traj(i - 1, 1));
   }
 
-  // Find the index of the closest trajectory point to the vehicle.
-  std::vector<float> distances(traj.rows());
-  for (std::size_t i = 0; i < traj.rows(); i++) {
-    distances[i] = std::hypot(x(0) - traj(i, 0), x(1) - traj(i, 1));
-  }
-
-  auto min_element = std::min_element(distances.begin(), distances.end());
-  std::size_t closest_idx = std::distance(distances.begin(), min_element);
   auto start_dist = cdist[closest_idx];
 
   // interpolate the trajectory at these points
   // NOTE: the interpolation points are equally
   // spaced given the average speed
-  const float v = traj.col(3).mean();
+  float v = traj.col(3).mean();
 
-  VectorXf intp_pts(T_);
+  Eigen::VectorXf intp_pts(T_);
   for (std::size_t i = 0; i < T_; i++) {
     intp_pts(i) = std::clamp(start_dist + (i + 1) * v * dt_, cdist.head(1)[0],
                              cdist.tail(1)[0]);
@@ -216,8 +219,7 @@ MatrixXf MPPI::reinterpolate_reference_trajectory(const MatrixXf &traj,
   Spline1D v_intp(fit_v);
 
   // interpolate at target points
-  Eigen::Matrix<float, T_, dim_x_> waypoints;
-  for (std::size_t i = 0; i < waypoints.rows(); i++) {
+  for (std::size_t i = 0; i < T_; i++) {
     waypoints(i, 0) = x_intp(intp_pts(i)).coeff(0);
     waypoints(i, 1) = y_intp(intp_pts(i)).coeff(0);
     waypoints(i, 2) = t_intp(intp_pts(i)).coeff(0);
@@ -232,7 +234,7 @@ MatrixXf MPPI::reinterpolate_reference_trajectory(const MatrixXf &traj,
   };
 
   waypoints(0, 2) = unwrap(x(2), waypoints(0, 2));
-  for (std::size_t i = 1; i < waypoints.rows(); i++) {
+  for (std::size_t i = 1; i < T_; i++) {
     waypoints(i, 2) = unwrap(waypoints(i - 1, 2), waypoints(i, 2));
   }
 

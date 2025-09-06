@@ -75,8 +75,8 @@
       
   </group> 
 
-  <!-- Launch MPC -->
-  <include file="$(find mpc_control)/launch/polaris_gem_mpc.launch" />
+  <!-- Launch MPPI -->
+  <include file="$(find mppi_control)/launch/polaris_gem_mppi.launch" />
 
   <!-- Run the MPC evaluator script -->
   <!-- This publishes the waypoints and other topics needed for the MPC -->

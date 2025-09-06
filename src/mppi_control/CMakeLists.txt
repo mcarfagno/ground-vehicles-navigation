@@ -22,10 +22,12 @@ find_package(catkin REQUIRED COMPONENTS
         geometry_msgs
         nav_msgs
         vision_msgs
+        ackermann_msgs
 	      tf
 )
 
-find_package(Eigen3 REQUIRED NO_MODULE)
+find_package(catkin REQUIRED cmake_modules)
+find_package(Eigen REQUIRED)
 
 catkin_package(
         INCLUDE_DIRS include
@@ -35,6 +37,7 @@ catkin_package(
         geometry_msgs
         nav_msgs
         vision_msgs
+        ackermann_msgs
 )
 
 include_directories(
@@ -57,7 +60,7 @@ add_dependencies(mppi
         ${catkin_EXPORTED_TARGETS}
 )
 
-install(TARGETS mppi 
+install(TARGETS mppi
         ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
