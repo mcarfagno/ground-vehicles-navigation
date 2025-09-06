@@ -6,7 +6,7 @@ MppiNode : MppiNode() : private_nh_("~") {
   // variables
   path_ = std::nullopt;
   obstacles_ = std::nullopt;
-  mpc_ = std::nullopt;
+  mppi_ = std::nullopt;
   latest_odom_ = std::nullopt;
 
   // params

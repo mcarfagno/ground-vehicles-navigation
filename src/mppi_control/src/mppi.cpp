@@ -1,5 +1,5 @@
 #include <stdexcept>
-#include <unsupported/Eigen/Splines>
+#include <eigen3/unsupported/Eigen/Splines>
 
 #include "mppi_control/mppi.hpp"
 namespace mppi {

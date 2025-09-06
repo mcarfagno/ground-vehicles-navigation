@@ -1,7 +1,7 @@
 #ifndef MPPI_CONTROLLER__UTILS_HPP_
 #define MPPI_CONTROLLER__UTILS_HPP_
 
-#include <Eigen/Dense>
+#include <eigen3/Eigen/Dense>
 #include <random>
 #include <utility>
 

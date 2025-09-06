@@ -1,7 +1,7 @@
 #ifndef MPPI_CONTROLLER__MPPI_HPP_
 #define MPPI_CONTROLLER__MPPI_HPP_
 
-#include <Eigen/Dense>
+#include <eigen3/Eigen/Dense>
 #include <chrono>
 #include <iostream>
 #include <memory>
