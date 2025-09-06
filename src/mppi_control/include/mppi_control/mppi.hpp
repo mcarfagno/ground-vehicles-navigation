@@ -44,7 +44,7 @@ public:
 
     param_gamma_ = param_lambda_ * (1.0 - (param_alpha_));
     // TODO: parametrise
-    sigma_ = << 0.5, 0.0, 0.0, 0.1;
+    sigma_ << 0.5, 0.0, 0.0, 0.1;
     stage_cost_weight_ << 50.0, 50.0, 1.0,20.0; // weight for [x, y, yaw, v]
     terminal_cost_weight_ << 50.0, 50.0, 1.0, 20.0; // weight for [x, y, yaw, v]
 

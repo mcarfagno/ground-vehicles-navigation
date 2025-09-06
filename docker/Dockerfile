@@ -60,11 +60,13 @@ RUN apt-get update && \
 
 # Build the ROS Workspace
 RUN mkdir ~/mpc_ws
-COPY src/mpc_gazebo /mpc_ws/src/mpc_gazebo
-COPY src/mpc_control /mpc_ws/src/mpc_control
+COPY src /mpc_ws/src
+RUN /bin/bash -c "source /opt/ros/noetic/setup.bash && \
+    rosdep update --rosdistro=noetic && \
+    rosdep install -y --from-paths /mpc_ws/src --ignore-src --rosdistro noetic"
 
-WORKDIR /mpc_ws/src
-RUN git clone https://gitlab.engr.illinois.edu/gemillins/POLARIS_GEM_e2.git
+#WORKDIR /mpc_ws/src
+#RUN git clone https://gitlab.engr.illinois.edu/gemillins/POLARIS_GEM_e2.git
 WORKDIR /mpc_ws
 RUN source /opt/ros/noetic/setup.bash && \
     catkin_make

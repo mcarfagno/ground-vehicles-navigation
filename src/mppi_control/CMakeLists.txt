@@ -26,8 +26,7 @@ find_package(catkin REQUIRED COMPONENTS
 	      tf
 )
 
-find_package(catkin REQUIRED cmake_modules)
-find_package(Eigen REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 catkin_package(
         INCLUDE_DIRS include
@@ -43,7 +42,7 @@ catkin_package(
 include_directories(
         include
         ${catkin_INCLUDE_DIRS}
-        ${Eigen_INCLUDE_DIRS}
+        ${EIGEN3_INCLUDE_DIRS}
 )
 
 add_executable(mppi
@@ -52,12 +51,13 @@ add_executable(mppi
         src/mppi.cpp
 )
 
-target_link_libraries(mppi
-        ${catkin_LIBRARIES}
+add_dependencies(mppi
+        ${${PROJECT_NAME}_EXPORTED_TARGETS}
+        ${catkin_EXPORTED_TARGETS}
 )
 
-add_dependencies(mppi
-        ${catkin_EXPORTED_TARGETS}
+target_link_libraries(mppi
+        ${catkin_LIBRARIES}
 )
 
 install(TARGETS mppi

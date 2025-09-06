@@ -1,7 +1,7 @@
 #include "mppi_control/mppi_node.hpp"
 
 namespace mppi {
-MppiNode : MppiNode() : private_nh_("~") {
+MppiNode :: MppiNode() : private_nh_("~") {
 
   // variables
   path_ = std::nullopt;
@@ -59,7 +59,7 @@ void MppiNode::run() {
   while (ros::ok()) {
     ros::spinOnce();
 
-    // check for topics
+    // check for tOpics
     if (!obstacles_.has_value() || !path_.has_value() ||
         !latest_odom_.has_value()) {
       ROS_WARN("MPPI waiting for necessary topics.");

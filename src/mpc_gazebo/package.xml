@@ -16,7 +16,6 @@
   <depend>vision_msgs</depend>
   <depend>std_msgs</depend>
   <depend>gazebo_ros</depend>
-  <depend>gem_description</depend>
   <depend>controller_manager</depend>
   <depend>controller_manager_msgs</depend>
   <depend>effort_controllers</depend>

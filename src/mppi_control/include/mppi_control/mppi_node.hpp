@@ -53,7 +53,7 @@ private:
   float steer_noise_;
   float acc_noise_;
 
-  std::optional<Mppi> mppi_;
+  std::optional<MPPI> mppi_;
 
   std::optional<nav_msgs::Odometry> latest_odom_;
   std::optional<nav_msgs::Path> path_;
@@ -63,7 +63,7 @@ private:
   Eigen::MatrixXf
   obstacles_to_matrix(const vision_msgs::Detection3DArray &obs) const;
 
-  void publish_mppi_cmd(double speed, double steer);
+  void publish_mpc_cmd(double speed, double steer);
   void
   publish_rviz_markers(const Eigen::MatrixXf &optimal_traj,
                        const std::vector<Eigen::MatrixXf> sampled_traj_list);
