@@ -27,10 +27,10 @@ typedef std::pair<double, double> MppiCmd;
 class MPPI {
 public:
   explicit MPPI(
-      float delta_t = 0.05, std::size_t horizon_step_T = 30,
-      std::size_t number_of_samples_K = 1000, float param_exploration = 0.0,
-      float param_lambda = 50.0,
-      float param_alpha = 1.0
+      const float delta_t = 0.05, const std::size_t horizon_step_T = 30,
+      const std::size_t number_of_samples_K = 1000, const float param_exploration = 0.0,
+      const float param_lambda = 50.0,
+      const float param_alpha = 1.0
       //Matrix2f sigma = Matrix2f(0.5, 0.0, 0.0, 0.1),
       //Vector4f stage_cost_weight = Vector4f(50.0, 50.0, 1.0,
       //                                      20.0), // weight for [x, y, yaw, v]
@@ -67,6 +67,7 @@ private:
   const std::size_t dim_x_ = 4; // dimension of system state vector
   const std::size_t dim_u_ = 2; // dimension of control input vector
 
+  float dt_;
   std::size_t T_;                 // prediction horizon
   std::size_t K_;                 // number of rollouts
   float param_exploration_;       // constant parameter of mppi
@@ -79,7 +80,6 @@ private:
   MatrixXf u_prev_;               // nominal control sequence (prev iteration)
 
   // vehicle parameters
-  float dt_;
   float wheel_base_ = 1.75;        // [m]
   float vehicle_width_ = 1.2;      // [m]
   float v_min_ = 0.0;              // [m/s]
@@ -88,6 +88,7 @@ private:
   float jerk_max_abs_ = 1.5;       // [m/sss]
   float steer_max_abs_ = 0.61;     // [rad]
   float steer_rate_max_abs_ = 0.5; // [rad/s]
+
   /**
    * @brief reinterpolates a trajectory to one of the correct
    * size and starting point

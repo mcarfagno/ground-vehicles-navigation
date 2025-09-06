@@ -69,13 +69,9 @@ void MppiNode::run() {
 
     // create mppi instance
     if (!mppi_.has_value()) {
-      mppi_ = MPPI(delta_t = 1. / rate_, horizon_step_T = mpc_horizon_steps_,
-                   number_of_samples_K = mpc_rollouts_;
-                   sigma = Eigen::Matrix2f(steer_noise_, 0.0, 0.0, acc_noise_),
-                   stage_cost_weight = Eigen::Vector4f(
-                       x_weight_, y_weight_, yaw_weight_, speed_weight_),
-                   terminal_cost_weight = Eigen::Vector4f(
-                       x_weight_, y_weight_, yaw_weight_, speed_weight_));
+      auto mppi = MPPI(1. / rate_, mpc_horizon_steps_,
+                   mpc_rollouts_,0.0,50.0,1.0);
+      mppi_.emplace(mppi);
     }
 
     // check for goal
@@ -118,7 +114,7 @@ void MppiNode::publish_mpc_cmd(double speed, double steer) {
 
 void MppiNode::publish_rviz_markers(
     const Eigen::MatrixXf &optimal_traj,
-    const std::vector<Eigen::ArrayXXf> sampled_traj_list) {
+    const std::vector<Eigen::MatrixXf> sampled_traj_list) {
   visualization_msgs::MarkerArray marker_arr;
 
   // 1- publish optimized trajectory
@@ -139,35 +135,35 @@ void MppiNode::publish_rviz_markers(
 
   marker.points.resize(optimal_traj.rows());
   for (std::size_t i = 0; i < optimal_traj.rows(); i++) {
-    marker.points[i].x = predicted_state_traj(i, 0);
-    marker.points[i].y = predicted_state_traj(i, 1);
+    marker.points[i].x = optimal_traj(i, 0);
+    marker.points[i].y = optimal_traj(i, 1);
   }
-  marker_arr.markers[i]=marker;
+  marker_arr.markers.push_back(marker);
 
   // 2- publish sampled trajectories
   for (std::size_t i = 0; i < sampled_traj_list.size(); i++) {
     const auto &sample = sampled_traj_list[i];
-    visualization_msgs::Marker marker;
-    marker.header.frame_id = "world";
-    marker.header.stamp = ros::Time::now();
-    marker.ns = "mppi_path_marker";
-    marker.id = i + 1;
-    marker.type = visualization_msgs::Marker::LINE_STRIP;
-    marker.action = visualization_msgs::Marker::ADD;
-    marker.scale.x = 0.2;
-    marker.color.r = 0.5;
-    marker.color.g = 0.5;
-    marker.color.b = 0.5;
-    marker.color.a = 0.35;
-    marker.frame_locked = true;
-    marker.lifetime = ros::Duration(1./rate_);
+    visualization_msgs::Marker s;
+    s.header.frame_id = "world";
+    s.header.stamp = ros::Time::now();
+    s.ns = "mppi_path_marker";
+    s.id = i + 1;
+    s.type = visualization_msgs::Marker::LINE_STRIP;
+    s.action = visualization_msgs::Marker::ADD;
+    s.scale.x = 0.2;
+    s.color.r = 0.5;
+    s.color.g = 0.5;
+    s.color.b = 0.5;
+    s.color.a = 0.35;
+    s.frame_locked = true;
+    s.lifetime = ros::Duration(1./rate_);
 
-    marker.points.resize(sample.rows());
+    s.points.resize(sample.rows());
     for (std::size_t i = 0; i < sample.rows(); i++) {
-      sample.points[i].x = predicted_state_traj(i, 0);
-      sample.points[i].y = predicted_state_traj(i, 1);
+      s.points[i].x = sample(i, 0);
+      s.points[i].y = sample(i, 1);
     }
-    marker_arr.markers[i]=marker;
+    marker_arr.markers.push_back(s);
   }
 
   viz_pub_.publish(std::move(marker_arr));
@@ -187,8 +183,8 @@ Eigen::MatrixXf MppiNode::path_to_matrix(const nav_msgs::Path &path) const {
   Eigen::MatrixXf tmp;
   tmp.resize(path.poses.size(), 4);
   for (std::size_t i = 0; i < path.poses.size(); i++) {
-    tmp.row(i) = {path.poses[i].pose.position.x, path.poses[i].pose.position.y,
-                  tf::getYaw(path.poses[i].pose.orientation), MPPI_REF_SPEED};
+    tmp.row(i) = Eigen::Vector4f(path.poses[i].pose.position.x, path.poses[i].pose.position.y,
+                  tf::getYaw(path.poses[i].pose.orientation), MPPI_REF_SPEED);
   }
 
   // workaround for lack of heading from GPS path
@@ -198,7 +194,7 @@ Eigen::MatrixXf MppiNode::path_to_matrix(const nav_msgs::Path &path) const {
   }
 
   // Decelerate and stop at end of Path
-  tmp(tmp.size1() - 1, 3) = 0.0;
+  tmp(tmp.rows() - 1, 3) = 0.0;
   return tmp;
 }
 
@@ -207,11 +203,35 @@ MppiNode::obstacles_to_matrix(const vision_msgs::Detection3DArray &obs) const {
   Eigen::MatrixXf tmp;
   tmp.resize(obs.detections.size(), 3);
   for (std::size_t i = 0; i < obs.detections.size(); i++) {
-    tmp.row(i) = {obs.detections[i].bbox.center.position.x,
+    tmp.row(i) = Eigen::Vector3f(obs.detections[i].bbox.center.position.x,
                   obs.detections[i].bbox.center.position.y,
-                  obs.detections[i].bbox.size.x};
+                  obs.detections[i].bbox.size.x);
   }
   return tmp;
 }
 
 } // namespace mppi
+
+
+/**
+ * @brief Converts latitude and longitude to global X, Y coordinates,
+ *        using an equirectangular projection.
+ *
+ *  @returns pair(meters east of lon0, meters north of lat0)
+ *
+ *  Sources: http://www.movable-type.co.uk/scripts/latlong.html
+ *           https://github.com/MPC-Car/StochasticLC/blob/master/controller.py
+ */
+std::pair<double, double> latlon_to_XY(double lat0, double lon0, double lat1,
+                                       double lon1) {
+  auto R_earth = 6371000; // meters
+  auto delta_lat = (lat1 - lat0) * (M_PI / 180);
+
+  auto delta_lon = (lon1 - lon0) * (M_PI / 180);
+
+  auto lat_avg = 0.5 * (lat1 * (M_PI / 180) + lat0 * (M_PI / 180));
+  auto X = R_earth * delta_lon * std::cos(lat_avg);
+  auto Y = R_earth * delta_lat;
+
+  return std::make_pair(X, Y);
+}

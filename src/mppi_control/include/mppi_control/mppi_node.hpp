@@ -23,6 +23,7 @@ namespace mppi {
 // TODO: this should be a rosparam
 static const float GPS_WORLD_ORIGIN_LAT = 40.09302492080515;
 static const float GPS_WORLD_ORIGIN_LON = -88.2357551253083;
+static const double MPPI_REF_SPEED = 20 / 3.6; // [m/s] -> 20km/h
 
 class MppiNode {
 public:
@@ -62,13 +63,16 @@ private:
   Eigen::Vector4f odometry_to_matrix(const nav_msgs::Odometry &odom) const;
   Eigen::MatrixXf
   obstacles_to_matrix(const vision_msgs::Detection3DArray &obs) const;
+Eigen::MatrixXf path_to_matrix(const nav_msgs::Path &path) const;
 
   void publish_mpc_cmd(double speed, double steer);
-  void
-  publish_rviz_markers(const Eigen::MatrixXf &optimal_traj,
-                       const std::vector<Eigen::MatrixXf> sampled_traj_list);
+void publish_rviz_markers(
+    const Eigen::MatrixXf &optimal_traj,
+    const std::vector<Eigen::MatrixXf> sampled_traj_list);
 };
 
 } // namespace mppi
 
+std::pair<double, double> latlon_to_XY(double lat0, double lon0, double lat1,
+                                       double lon1);
 #endif

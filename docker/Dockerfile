@@ -65,8 +65,8 @@ RUN /bin/bash -c "source /opt/ros/noetic/setup.bash && \
     rosdep update --rosdistro=noetic && \
     rosdep install -y --from-paths /mpc_ws/src --ignore-src --rosdistro noetic"
 
-#WORKDIR /mpc_ws/src
-#RUN git clone https://gitlab.engr.illinois.edu/gemillins/POLARIS_GEM_e2.git
+WORKDIR /mpc_ws/src
+RUN git clone https://gitlab.engr.illinois.edu/gemillins/POLARIS_GEM_e2.git
 WORKDIR /mpc_ws
 RUN source /opt/ros/noetic/setup.bash && \
     catkin_make
