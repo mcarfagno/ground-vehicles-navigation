@@ -71,7 +71,7 @@ void MppiNode::run() {
     if (!mppi_.has_value()) {
       ROS_INFO("MPPI controller instance");
       auto mppi =
-          MPPI(1. / rate_, mpc_horizon_steps_, mpc_rollouts_, 0.0, 50.0, 0.015);
+          MPPI(1. / rate_, mpc_horizon_steps_, mpc_rollouts_, 0.0, 100.0, 0.02);
       mppi_.emplace(mppi);
     }
 
