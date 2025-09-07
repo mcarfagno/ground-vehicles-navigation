@@ -26,7 +26,7 @@ MppiNode ::MppiNode() : private_nh_("~") {
   // publishers
   cmd_pub_ =
       nh_.advertise<ackermann_msgs::AckermannDrive>("/gem/ackermann_cmd", 10);
-  viz_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("/mpc/markers", 10);
+  viz_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("/mpc/markers", 1);
 
   // subscribers
   odom_sub_ = nh_.subscribe<nav_msgs::Odometry>(
@@ -69,6 +69,7 @@ void MppiNode::run() {
 
     // create mppi instance
     if (!mppi_.has_value()) {
+      ROS_INFO("MPPI controller instance");
       auto mppi =
           MPPI(1. / rate_, mpc_horizon_steps_, mpc_rollouts_, 0.0, 50.0, 0.015);
       mppi_.emplace(mppi);
@@ -89,9 +90,19 @@ void MppiNode::run() {
       continue;
     }
 
+    std::chrono::steady_clock::time_point begin =
+        std::chrono::steady_clock::now();
     auto opt =
         mppi_->compute_optimal_input(path_to_matrix(path_.value()),
                                      odometry_to_matrix(latest_odom_.value()));
+    std::chrono::steady_clock::time_point end =
+        std::chrono::steady_clock::now();
+    std::cout << "MPPI Time = "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(end -
+                                                                       begin)
+                     .count()
+              << "[ms]" << std::endl;
+
     const auto ctrl = std::get<0>(opt); // (steer,acc)
     const Eigen::MatrixXf x_opt = std::get<1>(opt);
     const auto x_sampled = std::get<2>(opt);
@@ -125,12 +136,15 @@ void MppiNode::publish_rviz_markers(
   marker.id = 0;
   marker.type = visualization_msgs::Marker::LINE_STRIP;
   marker.action = visualization_msgs::Marker::ADD;
-  marker.scale.x = 0.2;
+  marker.scale.x = 0.25;
   marker.color.r = 1.0;
   marker.color.g = 0.0;
   marker.color.b = 0.0;
   marker.color.a = 1.0;
-  marker.frame_locked = true;
+  marker.pose.orientation.x = 0.0;
+  marker.pose.orientation.y = 0.0;
+  marker.pose.orientation.z = 0.0;
+  marker.pose.orientation.w = 1.0;
   marker.lifetime = ros::Duration(1. / rate_);
 
   marker.points.resize(optimal_traj.rows());
@@ -155,7 +169,10 @@ void MppiNode::publish_rviz_markers(
     s.color.g = 0.5;
     s.color.b = 0.5;
     s.color.a = 0.35;
-    s.frame_locked = true;
+    s.pose.orientation.x = 0.0;
+    s.pose.orientation.y = 0.0;
+    s.pose.orientation.z = 0.0;
+    s.pose.orientation.w = 1.0;
     s.lifetime = ros::Duration(1. / rate_);
 
     s.points.resize(sample.rows());

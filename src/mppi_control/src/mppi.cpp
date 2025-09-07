@@ -7,11 +7,14 @@ namespace mppi {
 std::tuple<MppiCmd, MatrixXf, std::vector<MatrixXf>>
 MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
 
+  std::chrono::steady_clock::time_point begin =
+      std::chrono::steady_clock::now();
   // nominal control sequence
   MatrixXf u = u_prev_;
 
   // N points -> 1 for each horizon step
   const MatrixXf reference = reinterpolate_reference_trajectory(trajectory, x0);
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
   // buffer for rollout costs
   ArrayXf S = ArrayXf::Zero(K_);
@@ -58,7 +61,6 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
     epsilon_buff[k] = epsilon;
     sampled_buff[k] = sampled_trajectory;
   }
-
   // compute information theoretic weights for each sample
   VectorXf w = compute_weights_(S);
 
@@ -74,7 +76,6 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
   u.col(1) = u.col(1).array().min(a_max_abs_).max(-a_max_abs_);
 
   // TODO: a smoothing filer over u
-
 
   // set up for next iteration
   u_prev_ = u;
@@ -96,9 +97,8 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
   std::vector<int> costs_rank_(K_);
   std::iota(costs_rank_.begin(), costs_rank_.end(),
             0); // initialize costs_rank_ with 0, 1, 2, ..., K-1
-  std::sort(costs_rank_.begin(), costs_rank_.end(), [&](int i, int j) {
-    return S[i] < S[j];
-  });
+  std::sort(costs_rank_.begin(), costs_rank_.end(),
+            [&](int i, int j) { return S[i] < S[j]; });
 
   // sort costs_rank_ based on score value
   // NOTE: best (minimum) cost is costs_[costs_rank_[0]], worst (maximum) cost
@@ -164,8 +164,8 @@ ArrayXXf MPPI::compute_epsilon_() const {
   return epsilon;
 }
 
-VectorXf MPPI::compute_weights_(const ArrayXf& S) const {
-  Eigen::ArrayXf softmaxes = (-1.0f/param_lambda_ * (S - S.minCoeff())).exp();
+VectorXf MPPI::compute_weights_(const ArrayXf &S) const {
+  Eigen::ArrayXf softmaxes = (-1.0f / param_lambda_ * (S - S.minCoeff())).exp();
   softmaxes /= softmaxes.sum();
 
   return softmaxes.matrix();
@@ -190,10 +190,16 @@ MatrixXf MPPI::reinterpolate_reference_trajectory(const MatrixXf &traj,
   // find target states by interpolating along trajectory length.
   // compute first the distance along the trajectory for each traj point
   // these will be the interpolation knot points
-  Eigen::RowVectorXf cdist(traj.rows());
-  cdist(0) = 0.0;
+  // Eigen::RowVectorXf cdist(traj.rows());
+  // cdist(0) = 0.0;
+  // for (std::size_t i = 1; i < traj.rows(); i++) {
+  //  cdist(i) = cdist(i - 1) + std::hypot(traj(i, 0) - traj(i - 1, 0),
+  //                                       traj(i, 1) - traj(i - 1, 1));
+  //}
+  auto cdist = std::vector<float>(traj.rows());
+  cdist[0] = 0.0;
   for (std::size_t i = 1; i < traj.rows(); i++) {
-    cdist(i) = cdist(i - 1) + std::hypot(traj(i, 0) - traj(i - 1, 0),
+    cdist[i] = cdist[i - 1] + std::hypot(traj(i, 0) - traj(i - 1, 0),
                                          traj(i, 1) - traj(i - 1, 1));
   }
 
@@ -205,33 +211,74 @@ MatrixXf MPPI::reinterpolate_reference_trajectory(const MatrixXf &traj,
   float v = traj.col(3).mean();
 
   Eigen::VectorXf intp_pts(T_);
+  // for (std::size_t i = 0; i < T_; i++) {
+  //   intp_pts(i) = std::clamp(start_dist + (i + 1) * v * dt_,
+  //   cdist.head(1)[0],
+  //                            cdist.tail(1)[0]);
+  // }
   for (std::size_t i = 0; i < T_; i++) {
-    intp_pts(i) = std::clamp(start_dist + (i + 1) * v * dt_, cdist.head(1)[0],
-                             cdist.tail(1)[0]);
+    intp_pts(i) =
+        std::clamp(start_dist + (i + 1) * v * dt_, cdist.front(), cdist.back());
   }
 
-  const auto fit_x =
-      SplineFitting1D::Interpolate(traj.col(0).transpose(), 2, cdist);
-  Spline1D x_intp(fit_x);
+  //  // this is so slow...
+  //    std::chrono::steady_clock::time_point begin =
+  //        std::chrono::steady_clock::now();
+  //  const auto fit_x =
+  //      SplineFitting1D::Interpolate(traj.col(0).transpose(), 2, cdist);
+  //  Spline1D x_intp(fit_x);
+  //
+  //  const auto fit_y =
+  //      SplineFitting1D::Interpolate(traj.col(1).transpose(), 2, cdist);
+  //  Spline1D y_intp(fit_y);
+  //
+  //  const auto fit_theta =
+  //      SplineFitting1D::Interpolate(traj.col(2).transpose(), 2, cdist);
+  //  Spline1D t_intp(fit_theta);
+  //
+  //  const auto fit_v =
+  //      SplineFitting1D::Interpolate(traj.col(3).transpose(), 2, cdist);
+  //  Spline1D v_intp(fit_v);
+  //
+  //  // interpolate at target points
+  //  for (std::size_t i = 0; i < T_; i++) {
+  //    waypoints(i, 0) = x_intp(intp_pts(i)).coeff(0);
+  //    waypoints(i, 1) = y_intp(intp_pts(i)).coeff(0);
+  //    waypoints(i, 2) = t_intp(intp_pts(i)).coeff(0);
+  //    waypoints(i, 3) = v_intp(intp_pts(i)).coeff(0);
+  //  }
+  //
+  //  std::chrono::steady_clock::time_point end =
+  //  std::chrono::steady_clock::now(); std::cout << "interp = "
+  //            << std::chrono::duration_cast<std::chrono::milliseconds>(end -
+  //                                                                     begin)
+  //                   .count()
+  //            << "[ms]" << std::endl;
 
-  const auto fit_y =
-      SplineFitting1D::Interpolate(traj.col(1).transpose(), 2, cdist);
-  Spline1D y_intp(fit_y);
+  // FINE I'LL DO IT MYSELF
+  auto lerp = [](float a, float b, float f) {
+    return (a * (1.0 - f)) + (b * f);
+  };
 
-  const auto fit_theta =
-      SplineFitting1D::Interpolate(traj.col(2).transpose(), 2, cdist);
-  Spline1D t_intp(fit_theta);
+  // linear interpolation
+  for (std::size_t t = 0; t < T_; t++) {
+    // find index along cdist
+    const auto it = std::find_if(cdist.begin(), cdist.end(),
+                                 [&](float x) { return x > intp_pts(t); });
+    const auto idx = std::distance(cdist.begin(), it);
 
-  const auto fit_v =
-      SplineFitting1D::Interpolate(traj.col(3).transpose(), 2, cdist);
-  Spline1D v_intp(fit_v);
+    // edge cases to be addressed
 
-  // interpolate at target points
-  for (std::size_t i = 0; i < T_; i++) {
-    waypoints(i, 0) = x_intp(intp_pts(i)).coeff(0);
-    waypoints(i, 1) = y_intp(intp_pts(i)).coeff(0);
-    waypoints(i, 2) = t_intp(intp_pts(i)).coeff(0);
-    waypoints(i, 3) = v_intp(intp_pts(i)).coeff(0);
+    auto c1 = cdist[idx - 1];
+    auto c2 = cdist[idx];
+    // our point is somewhere along here
+    auto ratio = (intp_pts(t) - c1) / (c2 - c1);
+
+    // so we know wich trajectory points to interpolate
+    for (std::size_t x = 0; x < dim_x_; x++) {
+      auto intp = lerp(traj(idx - 1, x), traj(idx, x), ratio);
+      waypoints(t, x) = intp;
+    }
   }
 
   // NOTE: equivalent of MATLAB unwrap, removes jumps from heading
