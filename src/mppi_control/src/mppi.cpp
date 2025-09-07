@@ -69,7 +69,12 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
   }
   u = u.array() + w_epsilon;
 
+  // clip u
+  u.col(0) = u.col(0).array().min(steer_max_abs_).max(-steer_max_abs_);
+  u.col(1) = u.col(1).array().min(a_max_abs_).max(-a_max_abs_);
+
   // TODO: a smoothing filer over u
+
 
   // set up for next iteration
   u_prev_ = u;
