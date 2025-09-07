@@ -25,7 +25,6 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
 
     // sample disturbance vector
     const auto epsilon = compute_epsilon_();
-    epsilon_buff[k] = epsilon;
 
     // buffer for sampled control sequence
     MatrixXf v = MatrixXf::Zero(u.rows(), u.cols());
@@ -55,6 +54,8 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
 
     // terminal cost
     S(k) += phi_(x, reference.row(T_ - 1));
+
+    epsilon_buff[k] = epsilon;
     sampled_buff[k] = sampled_trajectory;
   }
 
@@ -158,14 +159,11 @@ ArrayXXf MPPI::compute_epsilon_() const {
   return epsilon;
 }
 
-VectorXf MPPI::compute_weights_(const ArrayXf &S) const {
-  // softmax scaling constant
-  const float rho = S.minCoeff();
-  const float eta = (-1.0 / param_lambda_ * (S - rho)).exp().sum();
+VectorXf MPPI::compute_weights_(const ArrayXf& S) const {
+  Eigen::ArrayXf softmaxes = (-1.0f/param_lambda_ * (S - S.minCoeff())).exp();
+  softmaxes /= softmaxes.sum();
 
-  VectorXf w = VectorXf::Zero(K_);
-  w = (1.0 / eta) * ((-1.0 / param_lambda_) * (S - rho)).exp();
-  return w;
+  return softmaxes.matrix();
 }
 
 MatrixXf MPPI::reinterpolate_reference_trajectory(const MatrixXf &traj,
