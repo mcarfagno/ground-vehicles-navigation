@@ -20,8 +20,8 @@ MppiNode ::MppiNode() : private_nh_("~") {
   private_nh_.param("y_pos_error_weight", y_weight_, float(50.0));
   private_nh_.param("heading_pos_error_weight", yaw_weight_, float(1.0));
   private_nh_.param("speed_error_weight", speed_weight_, float(20.0));
-  private_nh_.param("steer_noise", steer_noise_, float(0.5));
-  private_nh_.param("acceleration_noise", acc_noise_, float(0.1));
+  private_nh_.param("steer_noise", steer_noise_, float(0.3));
+  private_nh_.param("acceleration_noise", acc_noise_, float(1.0));
 
   // publishers
   cmd_pub_ =
@@ -70,6 +70,7 @@ void MppiNode::run() {
     // create mppi instance
     if (!mppi_.has_value()) {
       ROS_INFO("MPPI controller instance");
+      // TODO: pass noises
       auto mppi =
           MPPI(1. / rate_, mpc_horizon_steps_, mpc_rollouts_, 0.0, 100.0, 0.02);
       mppi_.emplace(mppi);

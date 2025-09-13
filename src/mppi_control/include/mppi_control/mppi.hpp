@@ -42,11 +42,8 @@ public:
         param_exploration_(param_exploration), param_lambda_(param_lambda),
         param_gamma_(param_gamma) {
 
-    std::cout << "dt" << dt_ << std::endl;
-    std::cout << "T" << T_ << std::endl;
-    std::cout << "K" << K_ << std::endl;
-
-    sigma_ << 0.5, 0.0, 0.0, 0.1;
+    // TODO: take these from the rosparams
+    sigma_ << 0.1, 0.0, 0.0, 1.5;
     stage_cost_weight_ << 50.0, 50.0, 1.0, 20.0;    // weight for [x, y, yaw, v]
     terminal_cost_weight_ << 50.0, 50.0, 1.0, 20.0; // weight for [x, y, yaw, v]
 

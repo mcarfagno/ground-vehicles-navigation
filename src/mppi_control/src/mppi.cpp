@@ -77,12 +77,11 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
 
   // TODO: a smoothing filer over u
 
+  // TODO: sanity check this
   // set up for next iteration
-  u_prev_ = u;
-
-  // shift inputs by 1 timestep
-  u_prev_.block(0, 0, u_prev_.rows() - 1, u_prev_.cols()) =
-      u_prev_.block(1, 0, u_prev_.rows() - 1, u_prev_.cols());
+  // shift inputs by 1 timestep to the left
+  //u_prev_.block(0, 0, u_prev_.rows() - 1, u_prev_.cols()) =
+  //    u.block(1, 0, u.rows() - 1, u.cols());
 
   // calculate optimal trajectory
   MatrixXf optimal_trajectory = MatrixXf::Zero(T_, dim_x_);
@@ -135,6 +134,10 @@ float MPPI::c_(const Vector4f &x_t, const Vector4f &x_ref) const {
 
   // Compute the cost
   Vector4f x_err = x_t - x_ref;
+
+  // normalise yaw error in [0, 2pi]
+  x_err(2) = std::remainder(x_err(2), 2*M_PI);
+
   float stage_cost =
       x_err.transpose() * stage_cost_weight_.asDiagonal() * x_err;
 

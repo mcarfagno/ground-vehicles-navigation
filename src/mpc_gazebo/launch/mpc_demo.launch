@@ -84,7 +84,7 @@
 
   <!-- Run the spawner script -->
   <!-- Spawns obstacles in gazebo -->
-  <node name="obstacle_spawner" pkg="mpc_gazebo" type="obstacle_spawner.py" respawn="false" output="screen"/>
+      <!-- <node name="obstacle_spawner" pkg="mpc_gazebo" type="obstacle_spawner.py" respawn="false" output="screen"/> -->
    
 </launch>
 
