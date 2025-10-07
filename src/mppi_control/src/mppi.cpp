@@ -208,20 +208,16 @@ MatrixXf MPPI::reinterpolate_reference_trajectory(const MatrixXf &traj,
 
   auto start_dist = cdist[closest_idx];
 
-  // interpolate the trajectory at these points
-  // NOTE: the interpolation points are equally
-  // spaced given the average speed
-  float v = traj.col(3).mean();
+  // TODO: make this work for reverse (negative velocities
+  auto v = x(3);
+  auto v_ref = traj.col(3).mean();
+  auto a_max = (v<v_ref) ? a_max_abs_ : 0.0;
 
-  Eigen::VectorXf intp_pts(T_);
-  // for (std::size_t i = 0; i < T_; i++) {
-  //   intp_pts(i) = std::clamp(start_dist + (i + 1) * v * dt_,
-  //   cdist.head(1)[0],
-  //                            cdist.tail(1)[0]);
-  // }
+  Eigen::VectorXd intp_pts(T_);
   for (std::size_t i = 0; i < T_; i++) {
-    intp_pts(i) =
-        std::clamp(start_dist + (i + 1) * v * dt_, cdist.front(), cdist.back());
+    v = std::clamp( v + a_max*dt_,-v_ref,v_ref);
+    intp_pts(i) = std::clamp(start_dist + (i + 1) * v * dt_, cdist.head(1)[0],
+                             cdist.tail(1)[0]);
   }
 
   //  // this is so slow...
