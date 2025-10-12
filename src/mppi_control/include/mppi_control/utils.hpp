@@ -5,40 +5,15 @@
 #include <random>
 #include <utility>
 
-/* @brief used to sample a multivariate_normal
- * SOURCE:
- * https://stackoverflow.com/questions/6142576/sample-from-multivariate-normal-gaussian-distribution-in-c
- * usage:
- * int size = 2;
- * Eigen::MatrixXf covar(size,size);
- *  covar << 1, .5,
- *         .5, 1;
- *
- * normal_random_variable sample { covar };
- * std::cout << sample() << std::endl;
- * */
-struct normal_random_variable {
-  normal_random_variable(Eigen::MatrixXf const &covar)
-      : normal_random_variable(Eigen::VectorXf::Zero(covar.rows()), covar) {}
+Eigen::ArrayXXf sample_noise(float stddev, std::size_t batch_size,
+                             std::size_t time_steps) {
+  std::default_random_engine generator_;
+  generator_.seed(std::chrono::system_clock::now().time_since_epoch().count());
 
-  normal_random_variable(Eigen::VectorXf const &mean,
-                         Eigen::MatrixXf const &covar)
-      : mean(mean) {
-    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXf> eigenSolver(covar);
-    transform = eigenSolver.eigenvectors() *
-                eigenSolver.eigenvalues().cwiseSqrt().asDiagonal();
-  }
-
-  Eigen::VectorXf mean;
-  Eigen::MatrixXf transform;
-
-  Eigen::VectorXf operator()() const {
-    static std::mt19937 gen{std::random_device{}()};
-    static std::normal_distribution<float> dist;
-
-    return mean + transform * Eigen::VectorXf{mean.size()}.unaryExpr(
-                                  [&](float x) { return dist(gen); });
-  }
-};
+  std::normal_distribution<float> ndistribution =
+      std::normal_distribution(0.0f, stddev);
+  return Eigen::ArrayXXf::NullaryExpr(
+      batch_size, time_steps, [&]() { return ndistribution(generator_); });
+}
 
 #endif

@@ -24,22 +24,68 @@ using Eigen::VectorXf;
  * */
 typedef std::pair<double, double> MppiCmd;
 
+// NOTE: The default in Eigen is column-major.
+// see here https://eigen.tuxfamily.org/dox/group__TopicStorageOrders.html
+struct Control {
+  Eigen::ArrayXf steer;
+  Eigen::ArrayXf a;
+
+  void reset(std::size_t T) {
+    a.setZero(T);
+    steer.setZero(T);
+  }
+};
+
+/**
+ * @brief Helper for Mppi State information: (batch_size, time_step)
+ */
+struct State {
+  Eigen::ArrayXXf x;
+  Eigen::ArrayXXf y;
+  Eigen::ArrayXXf v;
+  Eigen::ArrayXXf yaw;
+
+  Eigen::ArrayXXf steer;
+  Eigen::ArrayXXf a;
+
+  void reset(std::size_t K, std::size_t T) {
+    x.setZero(K, T);
+    y.setZero(K, T);
+    v.setZero(K, T);
+    yaw.setZero(K, T);
+
+    steer.setZero(K, T);
+    a.setZero(K, T);
+  }
+};
+
+/**
+ * @brief Helper for Mppi sampled trajectories: (batch_size, time_step)
+ */
+struct Trajectories {
+  Eigen::ArrayXXf x;
+  Eigen::ArrayXXf y;
+  Eigen::ArrayXXf yaw;
+  Eigen::ArrayXXf v;
+
+  void reset(std::size_t K, std::size_t T) {
+    x.setZero(K, T);
+    y.setZero(K, T);
+    yaw.setZero(K, T);
+    v.setZero(K, T);
+  }
+};
+
 class MPPI {
 public:
   explicit MPPI(
       const float delta_t = 0.05, const std::size_t horizon_step_T = 30,
       const std::size_t number_of_samples_K = 1000,
-      const float param_exploration = 0.0, const float param_lambda = 50.0,
+      const float param_lambda = 50.0,
       const float param_gamma = 0.0
-      // Matrix2f sigma = Matrix2f(0.5, 0.0, 0.0, 0.1),
-      // Vector4f stage_cost_weight = Vector4f(50.0, 50.0, 1.0,
-      //                                       20.0), // weight for [x, y, yaw,
-      //                                       v]
-      // Vector4f terminal_cost_weight =
-      //    Vector4f(50.0, 50.0, 1.0, 20.0) // weight for [x, y, yaw, v]
       )
       : dt_(delta_t), T_(horizon_step_T), K_(number_of_samples_K),
-        param_exploration_(param_exploration), param_lambda_(param_lambda),
+        param_lambda_(param_lambda),
         param_gamma_(param_gamma) {
 
     // TODO: take these from the rosparams
@@ -47,7 +93,7 @@ public:
     stage_cost_weight_ << 50.0, 50.0, 1.0, 20.0;    // weight for [x, y, yaw, v]
     terminal_cost_weight_ << 50.0, 50.0, 1.0, 20.0; // weight for [x, y, yaw, v]
 
-    u_prev_.setZero(T_, dim_u_);
+    u_.reset(T_);
   }
 
   ~MPPI() {}
@@ -55,7 +101,7 @@ public:
   /*
    * @brief resets the nominal control sequence
    * */
-  void reset() { u_prev_.setZero(T_, dim_u_); }
+  void reset() {u_.reset(T_);}
 
   // TODO: add obstacles
   std::tuple<MppiCmd, MatrixXf, std::vector<MatrixXf>>
@@ -97,11 +143,6 @@ private:
                                               const Vector4f &x) const;
 
   /**
-   * @brief samples disturbance vector epsilon_u_k
-   * */
-  ArrayXXf compute_epsilon_() const;
-
-  /**
    * @brief vehicle kinematics
    * */
   Vector4f F_(const Vector4f &x_t, const Vector2f &u_t) const;
@@ -111,20 +152,6 @@ private:
    * */
   Vector2f g_(const Vector2f &u_t) const;
 
-  /**
-   * @brief stage cost function
-   * */
-  float c_(const Vector4f &x_t, const Vector4f &x_ref) const;
-
-  /**
-   * @brief terminal cost function
-   * */
-  float phi_(const Vector4f &x_t, const Vector4f &x_ref) const;
-
-  /**
-   * @brief computes weights for each sample
-   * */
-  VectorXf compute_weights_(const ArrayXf &S) const;
 };
 
 } // namespace mppi

@@ -6,109 +6,155 @@ namespace mppi {
 
 std::tuple<MppiCmd, MatrixXf, std::vector<MatrixXf>>
 MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
-
-  std::chrono::steady_clock::time_point begin =
-      std::chrono::steady_clock::now();
-  // nominal control sequence
-  MatrixXf u = u_prev_;
-
   // N points -> 1 for each horizon step
-  const MatrixXf reference = reinterpolate_reference_trajectory(trajectory, x0);
-  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+  const Eigen::MatrixXf reference =
+      reinterpolate_reference_trajectory(trajectory, x0);
 
-  // buffer for rollout costs
-  ArrayXf S = ArrayXf::Zero(K_);
-  std::vector<ArrayXXf> epsilon_buff(K_);
-  std::vector<MatrixXf> sampled_buff(K_);
+  // sample noisy trajectories (K rollouts)
+  // x holds -> sampled trajecories and noisy controls for all batches
+  State x;
+  x.reset(K_, T_);
 
-  // loop for 0 ~ K-1 samples
-  for (std::size_t k = 0; k < K_; k++) {
-    // start state of this rollout
-    auto x = x0;
+  // sample disturbance vector epsilon (for each rollout)
+  auto epsilon_steer = sample_noise(sigma_(0, 0), K_, T_);
+  auto epsilon_a = sample_noise(sigma_(1, 1), K_, T_);
 
-    // sample disturbance vector
-    const auto epsilon = compute_epsilon_();
+  // compute noisy imput v (for each rollout)
+  x.a = epsilon_a.rowwise() + u_.a.transpose();
+  x.steer = epsilon_steer.rowwise() + u_.steer.transpose();
 
-    // buffer for sampled control sequence
-    MatrixXf v = MatrixXf::Zero(u.rows(), u.cols());
-    MatrixXf sampled_trajectory = MatrixXf::Zero(T_, dim_x_);
+  // set initials
+  x.x.col(0) = x0(0);
+  x.y.col(0) = x0(1);
+  x.yaw.col(0) = x0(2);
+  x.v.col(0) = x0(3);
 
-    // loop for time step t = 1 ~ T
-    for (std::size_t t = 1; t < T_ + 1; t++) {
+  // predict trajectory (for each rollout)
+  // loop for time step t = 1 ~ T
+  for (std::size_t t = 1; t < T_; t++) {
 
-      // noisy control input for this step
-      if (k < (1.0 - param_exploration_) * K_) {
-        // exploit
-        v.row(t - 1) = u.row(t - 1).array() + epsilon.row(t - 1);
-      } else {
-        // explore
-        v.row(t - 1) = epsilon.row(t - 1);
-      }
+    const auto x_t_minus = x.x.col(t - 1);
+    const auto y_t_minus = x.y.col(t - 1);
+    const auto yaw_t_minus = x.yaw.col(t - 1);
+    const auto v_t_minus = x.v.col(t - 1);
 
-      // update x
-      x = F_(x, g_(v.row(t - 1)));
-      sampled_trajectory.row(t - 1) = x;
+    const auto steer_t =
+        x.steer.col(t - 1).array().min(steer_max_abs_).max(-steer_max_abs_);
+    const auto accel_t =
+        x.a.col(t - 1).array().min(a_max_abs_).max(-a_max_abs_);
 
-      // accumulate stage cost
-      S(k) += c_(x, reference.row(t - 1)) + param_gamma_ * u.row(t - 1) *
-                                                sigma_.inverse() *
-                                                v.row(t - 1).transpose();
-    }
-
-    // terminal cost
-    S(k) += phi_(x, reference.row(T_ - 1));
-
-    epsilon_buff[k] = epsilon;
-    sampled_buff[k] = sampled_trajectory;
+    x.x.col(t) = x_t_minus + v_t_minus * yaw_t_minus.cos() * dt_;
+    x.y.col(t) = y_t_minus + v_t_minus * yaw_t_minus.sin() * dt_;
+    x.yaw.col(t) = yaw_t_minus + v_t_minus / wheel_base_ * steer_t.tan() * dt_;
+    x.v.col(t) = v_t_minus + accel_t * dt_;
   }
-  // compute information theoretic weights for each sample
-  VectorXf w = compute_weights_(S);
 
-  // update control input sequence
-  ArrayXXf w_epsilon = ArrayXXf::Zero(T_, dim_u_);
-  for (std::size_t k = 0; k < K_; k++) {
-    w_epsilon += w(k) * epsilon_buff[k];
-  }
-  u = u.array() + w_epsilon;
+  Eigen::ArrayXf costs_;
+  costs_.setZero(K_);
 
-  // clip u
-  u.col(0) = u.col(0).array().min(steer_max_abs_).max(-steer_max_abs_);
-  u.col(1) = u.col(1).array().min(a_max_abs_).max(-a_max_abs_);
+  // TODO make this without nested loop
+  //// accumulate stage cost
+  // for (std::size_t k = 0; k < K_; k++) {
+  //  for (std::size_t t = 1; t < T_; t++) {
+  //    costs_(k) +=
+  //        stage_cost_weight_[0] * std::pow((x.x(k, t) - reference(t, 0)), 2) +
+  //        stage_cost_weight_[1] * std::pow((x.y(k, t) - reference(t, 1)), 2) +
+  //        stage_cost_weight_[2] * std::pow((x.yaw(k, t) - reference(t, 2)), 2)
+  //        + stage_cost_weight_[3] * std::pow((x.v(k, t) - reference(t, 3)),
+  //        2);
+  //  }
+  //}
 
-  // TODO: a smoothing filer over u
+  // accumulate stage cost
+  auto x_errors =
+      stage_cost_weight_[0] *
+      (x.x.rowwise() - reference.col(0).transpose().array()).square();
+  auto y_errors =
+      stage_cost_weight_[1] *
+      (x.y.rowwise() - reference.col(1).transpose().array()).square();
+  auto v_errors =
+      stage_cost_weight_[3] *
+      (x.v.rowwise() - reference.col(3).transpose().array()).square();
+  auto yaw_errors =
+      stage_cost_weight_[2] *
+      (x.yaw.rowwise() - reference.col(2).transpose().array()).square();
 
-  // TODO: sanity check this
-  // set up for next iteration
-  // shift inputs by 1 timestep to the left
-  //u_prev_.block(0, 0, u_prev_.rows() - 1, u_prev_.cols()) =
-  //    u.block(1, 0, u.rows() - 1, u.cols());
+  costs_ += x_errors.rowwise().sum();
+  costs_ += y_errors.rowwise().sum();
+  costs_ += v_errors.rowwise().sum();
+  costs_ += yaw_errors.rowwise().sum();
+
+  // terminal state goal cost
+  costs_ += 10.0f * ((x.x.col(T_ - 1) - reference(T_ - 1, 0)).square() +
+                        (x.y.col(T_ - 1) - reference(T_ - 1, 1)).square())
+                           .sqrt();
+
+  auto bounded_noises_steer = x.steer.rowwise() - u_.steer.transpose();
+  const float gamma_vx = param_gamma_ / (sigma_(0, 0) * sigma_(0, 0));
+  costs_ +=
+      (gamma_vx *
+       (bounded_noises_steer.rowwise() * u_.steer.transpose()).rowwise().sum())
+          .eval();
+
+  auto bounded_noises_a = x.a.rowwise() - u_.a.transpose();
+  const float gamma_va = param_gamma_ / (sigma_(1, 1) * sigma_(1, 1));
+  costs_ += (gamma_va *
+             (bounded_noises_a.rowwise() * u_.a.transpose()).rowwise().sum())
+                .eval();
+
+  auto costs_normalized = costs_ - costs_.minCoeff();
+  const float inv_temp = 1.0f / param_lambda_;
+  auto softmaxes = (-inv_temp * costs_normalized).exp().eval();
+  softmaxes /= softmaxes.sum();
+
+  auto softmax_mat = softmaxes.matrix();
+  u_.a = x.a.transpose().matrix() * softmax_mat;
+  u_.steer = x.steer.transpose().matrix() * softmax_mat;
+
+  // clamp
+  u_.steer = u_.steer.array().min(steer_max_abs_).max(-steer_max_abs_);
+  u_.a = u_.a.array().min(a_max_abs_).max(-a_max_abs_);
 
   // calculate optimal trajectory
-  MatrixXf optimal_trajectory = MatrixXf::Zero(T_, dim_x_);
-  Vector4f x = x0;
+  Eigen::MatrixXf optimal_traj = Eigen::MatrixXf::Zero(T_, dim_x_);
+  Eigen::Vector4f xn = x0;
   for (std::size_t t = 0; t < T_; t++) {
-    x = F_(x, g_(u.row(t)));
-    optimal_trajectory.row(t) = x;
+    auto ut = Eigen::Vector2f(u_.steer(t), u_.a(t));
+    xn = F_(xn, g_(ut));
+    optimal_traj.row(t) = xn;
   }
 
-  // return best X samples
-  const auto best_x = std::ceil(K_ / 10);
+  // TODO filter u_
+
+  // get cmd
+  auto next_cmd = MppiCmd(u_.a(0), u_.steer(0));
+
+  // shift nominal control sequence by 1 timestep to the left, for next iter
+  u_.steer(Eigen::seq(0, T_ - 2)) = u_.steer(Eigen::seq(1, T_ - 1)).eval();
+  u_.a(Eigen::seq(0, T_ - 2)) = u_.a(Eigen::seq(1, T_ - 1)).eval();
+
+  // update ranking of costs
+  // 1th: best (i.e. minimum cost), K: worst (i.e. maximum cost)
+  const auto best_x = std::ceil(K_ / 20);
   std::vector<int> costs_rank_(K_);
   std::iota(costs_rank_.begin(), costs_rank_.end(),
             0); // initialize costs_rank_ with 0, 1, 2, ..., K-1
   std::sort(costs_rank_.begin(), costs_rank_.end(),
-            [&](int i, int j) { return S[i] < S[j]; });
+            [&](int i, int j) { return costs_[i] < costs_[j]; });
 
   // sort costs_rank_ based on score value
   // NOTE: best (minimum) cost is costs_[costs_rank_[0]], worst (maximum) cost
   // is costs_[costs_rank_[K-1]]
-  std::vector<MatrixXf> best_samples(best_x);
+  std::vector<Eigen::MatrixXf> best_samples(best_x);
   for (std::size_t i = 0; i < best_x; i++) {
-    best_samples[i] = std::move(sampled_buff[costs_rank_[i]]);
+    Eigen::MatrixXf xx;
+    xx.setZero(2, T_);
+    xx.row(0) = x.x.row(costs_rank_[i]);
+    xx.row(1) = x.y.row(costs_rank_[i]);
+    best_samples[i] = xx;
   }
 
-  return std::make_tuple(std::make_pair(u(0, 0), u(0, 1)), optimal_trajectory,
-                         best_samples);
+  return std::make_tuple(next_cmd,optimal_traj, best_samples);
 }
 
 Vector4f MPPI::F_(const Vector4f &x_t, const Vector2f &u_t) const {
@@ -130,56 +176,9 @@ Vector2f MPPI::g_(const Vector2f &u_t) const {
                   std::clamp(u_t(1), -a_max_abs_, a_max_abs_));
 }
 
-float MPPI::c_(const Vector4f &x_t, const Vector4f &x_ref) const {
-
-  // Compute the cost
-  Vector4f x_err = x_t - x_ref;
-
-  // normalise yaw error in [0, 2pi]
-  x_err(2) = std::remainder(x_err(2), 2*M_PI);
-
-  float stage_cost =
-      x_err.transpose() * stage_cost_weight_.asDiagonal() * x_err;
-
-  // TODO add penalty for collision with obstacles
-  return stage_cost;
-}
-
-float MPPI::phi_(const Vector4f &x_t, const Vector4f &x_ref) const {
-
-  // Compute the cost
-  Vector4f x_err = x_t - x_ref;
-  float stage_cost =
-      x_err.transpose() * stage_cost_weight_.asDiagonal() * x_err;
-
-  // TODO add penalty for collision with obstacles
-  return stage_cost;
-}
-
-ArrayXXf MPPI::compute_epsilon_() const {
-  ArrayXXf epsilon = ArrayXXf::Zero(T_, dim_u_);
-  normal_random_variable sample{sigma_};
-
-  for (std::size_t i = 0; i < epsilon.rows(); i++) {
-    epsilon.row(i) = sample();
-  }
-
-  return epsilon;
-}
-
-VectorXf MPPI::compute_weights_(const ArrayXf &S) const {
-  Eigen::ArrayXf softmaxes = (-1.0f / param_lambda_ * (S - S.minCoeff())).exp();
-  softmaxes /= softmaxes.sum();
-
-  return softmaxes.matrix();
-}
-
 MatrixXf MPPI::reinterpolate_reference_trajectory(const MatrixXf &traj,
                                                   const Vector4f &x) const {
-  using Spline1D = Eigen::Spline<float, 1, 2>;
-  using SplineFitting1D = Eigen::SplineFitting<Spline1D>;
-
-  Eigen::MatrixXf waypoints = Eigen::MatrixXf(T_, dim_x_);
+  Eigen::Matrix<float, T_, 4> waypoints;
 
   // Find the index of the closest trajectory point to the vehicle.
   std::vector<float> distances(traj.rows());
@@ -193,16 +192,10 @@ MatrixXf MPPI::reinterpolate_reference_trajectory(const MatrixXf &traj,
   // find target states by interpolating along trajectory length.
   // compute first the distance along the trajectory for each traj point
   // these will be the interpolation knot points
-  // Eigen::RowVectorXf cdist(traj.rows());
-  // cdist(0) = 0.0;
-  // for (std::size_t i = 1; i < traj.rows(); i++) {
-  //  cdist(i) = cdist(i - 1) + std::hypot(traj(i, 0) - traj(i - 1, 0),
-  //                                       traj(i, 1) - traj(i - 1, 1));
-  //}
-  auto cdist = std::vector<float>(traj.rows());
-  cdist[0] = 0.0;
+  Eigen::RowVectorXf cdist(traj.rows());
+  cdist(0) = 0.0;
   for (std::size_t i = 1; i < traj.rows(); i++) {
-    cdist[i] = cdist[i - 1] + std::hypot(traj(i, 0) - traj(i - 1, 0),
+    cdist(i) = cdist(i - 1) + std::hypot(traj(i, 0) - traj(i - 1, 0),
                                          traj(i, 1) - traj(i - 1, 1));
   }
 
@@ -210,56 +203,21 @@ MatrixXf MPPI::reinterpolate_reference_trajectory(const MatrixXf &traj,
 
   // TODO: make this work for reverse (negative velocities
   auto v = x(3);
-  auto v_ref = traj.col(3).mean();
-  auto a_max = (v<v_ref) ? a_max_abs_ : 0.0;
+  float v_ref = traj.col(3).mean();
+  float a_max = (v < v_ref) ? a_max_abs_ : 0.0;
 
-  Eigen::VectorXd intp_pts(T_);
+  Eigen::VectorXf intp_pts(T_);
   for (std::size_t i = 0; i < T_; i++) {
-    v = std::clamp( v + a_max*dt_,-v_ref,v_ref);
+    v = std::clamp(v + a_max * dt_, -v_ref, v_ref);
     intp_pts(i) = std::clamp(start_dist + (i + 1) * v * dt_, cdist.head(1)[0],
                              cdist.tail(1)[0]);
   }
-
-  //  // this is so slow...
-  //    std::chrono::steady_clock::time_point begin =
-  //        std::chrono::steady_clock::now();
-  //  const auto fit_x =
-  //      SplineFitting1D::Interpolate(traj.col(0).transpose(), 2, cdist);
-  //  Spline1D x_intp(fit_x);
-  //
-  //  const auto fit_y =
-  //      SplineFitting1D::Interpolate(traj.col(1).transpose(), 2, cdist);
-  //  Spline1D y_intp(fit_y);
-  //
-  //  const auto fit_theta =
-  //      SplineFitting1D::Interpolate(traj.col(2).transpose(), 2, cdist);
-  //  Spline1D t_intp(fit_theta);
-  //
-  //  const auto fit_v =
-  //      SplineFitting1D::Interpolate(traj.col(3).transpose(), 2, cdist);
-  //  Spline1D v_intp(fit_v);
-  //
-  //  // interpolate at target points
-  //  for (std::size_t i = 0; i < T_; i++) {
-  //    waypoints(i, 0) = x_intp(intp_pts(i)).coeff(0);
-  //    waypoints(i, 1) = y_intp(intp_pts(i)).coeff(0);
-  //    waypoints(i, 2) = t_intp(intp_pts(i)).coeff(0);
-  //    waypoints(i, 3) = v_intp(intp_pts(i)).coeff(0);
-  //  }
-  //
-  //  std::chrono::steady_clock::time_point end =
-  //  std::chrono::steady_clock::now(); std::cout << "interp = "
-  //            << std::chrono::duration_cast<std::chrono::milliseconds>(end -
-  //                                                                     begin)
-  //                   .count()
-  //            << "[ms]" << std::endl;
 
   // FINE I'LL DO IT MYSELF
   auto lerp = [](float a, float b, float f) {
     return (a * (1.0 - f)) + (b * f);
   };
 
-  // linear interpolation
   for (std::size_t t = 0; t < T_; t++) {
     // find index along cdist
     const auto it = std::find_if(cdist.begin(), cdist.end(),

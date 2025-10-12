@@ -72,7 +72,7 @@ void MppiNode::run() {
       ROS_INFO("MPPI controller instance");
       // TODO: pass noises
       auto mppi =
-          MPPI(1. / rate_, mpc_horizon_steps_, mpc_rollouts_, 0.0, 100.0, 0.02);
+          MPPI(1. / rate_, mpc_horizon_steps_, mpc_rollouts_, 100.0, 0.02);
       mppi_.emplace(mppi);
     }
 
@@ -93,7 +93,7 @@ void MppiNode::run() {
 
     std::chrono::steady_clock::time_point begin =
         std::chrono::steady_clock::now();
-    auto opt =
+    const auto [ctrl, x_opt, x_sampled] =
         mppi_->compute_optimal_input(path_to_matrix(path_.value()),
                                      odometry_to_matrix(latest_odom_.value()));
     std::chrono::steady_clock::time_point end =
@@ -104,10 +104,7 @@ void MppiNode::run() {
                      .count()
               << "[ms]" << std::endl;
 
-    const auto ctrl = std::get<0>(opt); // (steer,acc)
-    const Eigen::MatrixXf x_opt = std::get<1>(opt);
-    const auto x_sampled = std::get<2>(opt);
-    auto speed = std::hypot(latest_odom_.value().twist.twist.linear.x,
+        auto speed = std::hypot(latest_odom_.value().twist.twist.linear.x,
                             latest_odom_.value().twist.twist.linear.y) +
                  ctrl.second * 1. / rate_;
     publish_mpc_cmd(speed, ctrl.first);
