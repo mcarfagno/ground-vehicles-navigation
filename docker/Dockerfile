@@ -1,4 +1,4 @@
-FROM osrf/ros:noetic-desktop-full 
+FROM osrf/ros:noetic-desktop-full
 
 ARG DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-c"]
@@ -65,8 +65,14 @@ RUN /bin/bash -c "source /opt/ros/noetic/setup.bash && \
     rosdep update --rosdistro=noetic && \
     rosdep install -y --from-paths /mpc_ws/src --ignore-src --rosdistro noetic"
 
-WORKDIR /mpc_ws/src
-RUN git clone https://gitlab.engr.illinois.edu/gemillins/POLARIS_GEM_e2.git
+#WORKDIR /mpc_ws/src
+#RUN git clone https://gitlab.engr.illinois.edu/gemillins/POLARIS_GEM_e2.git
+
+# I need eigen 3.4 for mppi, and noetic ships with 3.3.7
+WORKDIR /mpc_ws/src/mppi_control
+RUN git clone https://gitlab.com/libeigen/eigen.git
+
+# build
 WORKDIR /mpc_ws
 RUN source /opt/ros/noetic/setup.bash && \
     catkin_make

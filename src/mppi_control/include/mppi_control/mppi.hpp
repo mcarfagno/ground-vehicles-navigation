@@ -123,7 +123,7 @@ private:
   Matrix2f sigma_;  // noise covariance matrix
   Vector4f stage_cost_weight_;    // weight for [x, y, yaw, v]
   Vector4f terminal_cost_weight_; // weight for [x, y, yaw, v]
-  MatrixXf u_prev_; // nominal control sequence from prev iteration
+  Control u_; // nominal control sequence (prev iteration)
 
   // vehicle parameters
   float wheel_base_ = 1.75;        // [m]

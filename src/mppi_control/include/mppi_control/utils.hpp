@@ -5,7 +5,7 @@
 #include <random>
 #include <utility>
 
-Eigen::ArrayXXf sample_noise(float stddev, std::size_t batch_size,
+static Eigen::ArrayXXf sample_noise(float stddev, std::size_t batch_size,
                              std::size_t time_steps) {
   std::default_random_engine generator_;
   generator_.seed(std::chrono::system_clock::now().time_since_epoch().count());

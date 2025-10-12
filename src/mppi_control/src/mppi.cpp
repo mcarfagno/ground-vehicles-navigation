@@ -1,5 +1,4 @@
 #include <stdexcept>
-#include <unsupported/Eigen/Splines>
 
 #include "mppi_control/mppi.hpp"
 namespace mppi {
@@ -178,7 +177,8 @@ Vector2f MPPI::g_(const Vector2f &u_t) const {
 
 MatrixXf MPPI::reinterpolate_reference_trajectory(const MatrixXf &traj,
                                                   const Vector4f &x) const {
-  Eigen::Matrix<float, T_, 4> waypoints;
+  Eigen::MatrixXf waypoints;
+  waypoints.setZero(T_, 4);
 
   // Find the index of the closest trajectory point to the vehicle.
   std::vector<float> distances(traj.rows());
