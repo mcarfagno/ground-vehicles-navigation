@@ -51,7 +51,7 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
   Eigen::ArrayXf costs_;
   costs_.setZero(K_);
 
-  // TODO make this without nested loop
+  // TODO: make this without nested loop
   //// accumulate stage cost
   // for (std::size_t k = 0; k < K_; k++) {
   //  for (std::size_t t = 1; t < T_; t++) {
@@ -77,6 +77,19 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
   auto yaw_errors =
       stage_cost_weight_[2] *
       (x.yaw.rowwise() - reference.col(2).transpose().array()).square();
+  
+  
+  // TODO: add steer_rate to cost function
+  // need correct u_steer_prev for 1st timestep
+  //Eigen::ArrayXXf steer_diff = Eigen::ArrayXXf::Zero(K_, T_);
+  //steer_diff.col(0) = x.steer.col(0) - u_.steer(0); 
+
+  //for(int t=1; t<T_; ++t) {
+  //    steer_diff.col(t) = x.steer.col(t) - x.steer.col(t-1);
+  //}
+
+  //auto steer_rate_costs = steer_rate_cost_weight * steer_diff.square();
+  //costs_ += steer_rate_costs.rowwise().sum();
 
   costs_ += x_errors.rowwise().sum();
   costs_ += y_errors.rowwise().sum();
@@ -114,6 +127,10 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
   u_.steer = u_.steer.array().min(steer_max_abs_).max(-steer_max_abs_);
   u_.a = u_.a.array().min(a_max_abs_).max(-a_max_abs_);
 
+  // smooth sampled ctrl
+  apply_savitzky_golay_filter(u_.steer);
+  apply_savitzky_golay_filter(u_.a);
+ 
   // calculate optimal trajectory
   Eigen::MatrixXf optimal_traj = Eigen::MatrixXf::Zero(T_, dim_x_);
   Eigen::Vector4f xn = x0;
@@ -122,8 +139,6 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
     xn = F_(xn, g_(ut));
     optimal_traj.row(t) = xn;
   }
-
-  // TODO filter u_
 
   // get cmd
   auto next_cmd = MppiCmd(u_.a(0), u_.steer(0));

@@ -151,8 +151,34 @@ private:
    * @brief input clamp function
    * */
   Vector2f g_(const Vector2f &u_t) const;
-
 };
+
+/**
+ * @brief utility function for simple 1D Savitzky-Golay filter
+ * (Window size 5, Polynomial order 2)
+ * */
+template <typename Derived>
+void apply_savitzky_golay_filter(Eigen::DenseBase<Derived>& u) {
+  // DenseBase accepts both Matrices (Vectors) and Arrays
+  EIGEN_STATIC_ASSERT_VECTOR_ONLY(Derived);
+
+  if (u.size() < 5) return;
+  typename Derived::PlainObject u_copy = u;
+
+  // Coefficients: [-3, 12, 17, 12, -3] / 35.0
+  for (int i = 2; i < u.size() - 2; ++i) {
+    u(i) = (-3.0f * u_copy(i - 2) + 
+             12.0f * u_copy(i - 1) + 
+             17.0f * u_copy(i) + 
+             12.0f * u_copy(i + 1) - 
+             3.0f * u_copy(i + 2)) / 35.0f;
+  }
+
+  u(0) = u_copy(0);
+  u(1) = u_copy(1);
+  u(u.size() - 2) = u_copy(u.size() - 2);
+  u(u.size() - 1) = u_copy(u.size() - 1);
+}
 
 } // namespace mppi
 #endif
