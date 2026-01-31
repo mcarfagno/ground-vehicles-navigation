@@ -1,0 +1,69 @@
+services:
+  # Production/demo service - uses pre-built workspace
+  mpc-demo:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: runtime
+      args:
+        - USER_UID=${UID:-1000}
+        - USER_GID=${GID:-1000}
+    image: mpc-demo:latest
+    container_name: mpc-demo
+    network_mode: host
+    ipc: host
+    privileged: true
+    stdin_open: true
+    tty: true
+    user: "${UID:-1000}:${GID:-1000}"
+    environment:
+      - DISPLAY=${DISPLAY}
+      - ROS_DISTRO=noetic
+      - ROS_MASTER_URI=http://localhost:11311
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /etc/localtime:/etc/localtime:ro
+    command: roslaunch mpc_gazebo mpc_demo.launch
+    # Uncomment for NVIDIA GPU support
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # Development service - mounts source code for live editing
+  mpc-devel:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: devel
+      args:
+        - USER_UID=${UID:-1000}
+        - USER_GID=${GID:-1000}
+    image: mpc-devel:latest
+    container_name: mpc-devel
+    network_mode: host
+    ipc: host
+    privileged: true
+    stdin_open: true
+    tty: true
+    user: "${UID:-1000}:${GID:-1000}"
+    environment:
+      - DISPLAY=${DISPLAY}
+      - ROS_DISTRO=noetic
+      - ROS_MASTER_URI=http://localhost:11311
+    volumes:
+      - ../src:/mpc_ws/src:rw
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - mpc-build:/mpc_ws/build
+      - mpc-devel:/mpc_ws/devel
+      - mpc-logs:/mpc_ws/logs
+      - /etc/localtime:/etc/localtime:ro
+    command: bash
+
+volumes:
+  mpc-build:
+  mpc-devel:
+  mpc-logs:

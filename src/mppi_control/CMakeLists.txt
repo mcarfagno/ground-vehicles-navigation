@@ -26,11 +26,7 @@ find_package(catkin REQUIRED COMPONENTS
 	      tf
 )
 
-#find_package(Eigen3 REQUIRED)
-
-include_directories(
-    eigen
-)
+find_package(Eigen3 3.4 REQUIRED)
 
 catkin_package(
         INCLUDE_DIRS include
@@ -46,7 +42,7 @@ catkin_package(
 include_directories(
         include
         ${catkin_INCLUDE_DIRS}
-        #${EIGEN3_INCLUDE_DIRS}
+        ${EIGEN3_INCLUDE_DIR}
 )
 
 add_executable(mppi
