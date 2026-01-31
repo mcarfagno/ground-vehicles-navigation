@@ -70,9 +70,8 @@ void MppiNode::run() {
     // create mppi instance
     if (!mppi_.has_value()) {
       ROS_INFO("MPPI controller instance");
-      // TODO: pass noises
-      auto mppi =
-          MPPI(1. / rate_, mpc_horizon_steps_, mpc_rollouts_, 100.0, 0.02);
+      auto mppi = MPPI(1. / rate_, mpc_horizon_steps_, mpc_rollouts_,
+                      100.0, 0.02, steer_noise_, acc_noise_);
       mppi_.emplace(mppi);
     }
 
@@ -104,7 +103,7 @@ void MppiNode::run() {
                      .count()
               << "[ms]" << std::endl;
 
-        auto speed = std::hypot(latest_odom_.value().twist.twist.linear.x,
+    auto speed = std::hypot(latest_odom_.value().twist.twist.linear.x,
                             latest_odom_.value().twist.twist.linear.y) +
                  ctrl.second * 1. / rate_;
     publish_mpc_cmd(speed, ctrl.first);

@@ -81,15 +81,18 @@ public:
   explicit MPPI(
       const float delta_t = 0.05, const std::size_t horizon_step_T = 30,
       const std::size_t number_of_samples_K = 1000,
-      const float param_lambda = 50.0,
-      const float param_gamma = 0.0
+      const float param_lambda = 100.0,
+      const float param_gamma = 0.0,
+      const float steer_noise = 0.1,
+      const float accel_noise = 1.0
       )
       : dt_(delta_t), T_(horizon_step_T), K_(number_of_samples_K),
         param_lambda_(param_lambda),
         param_gamma_(param_gamma) {
 
-    // TODO: take these from the rosparams
-    sigma_ << 0.1, 0.0, 0.0, 1.5;
+    // Initialize noise covariance matrix with provided values
+    sigma_ << steer_noise, 0.0, 0.0, accel_noise;
+    // TODO: these should be rosparams
     stage_cost_weight_ << 50.0, 50.0, 1.0, 20.0;    // weight for [x, y, yaw, v]
     terminal_cost_weight_ << 50.0, 50.0, 1.0, 20.0; // weight for [x, y, yaw, v]
 

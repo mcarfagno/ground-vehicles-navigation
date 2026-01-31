@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include <cmath>
 
 #include "mppi_control/mppi.hpp"
 namespace mppi {
@@ -46,20 +47,24 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
     x.y.col(t) = y_t_minus + v_t_minus * yaw_t_minus.sin() * dt_;
     x.yaw.col(t) = yaw_t_minus + v_t_minus / wheel_base_ * steer_t.tan() * dt_;
     x.v.col(t) = v_t_minus + accel_t * dt_;
+
+    // Wrap yaw angles to [-pi, pi] to prevent numerical issues
+    //x.yaw.col(t) = (x.yaw.col(t) + static_cast<float>(M_PI)).unaryExpr([](float a) {
+    //  return a - static_cast<float>(M_2_PI) * std::floor(a / static_cast<float>(M_2_PI));
+    //}) - static_cast<float>(M_PI);
   }
 
   Eigen::ArrayXf costs_;
   costs_.setZero(K_);
 
   // TODO: make this without nested loop
-  //// accumulate stage cost
   // for (std::size_t k = 0; k < K_; k++) {
   //  for (std::size_t t = 1; t < T_; t++) {
   //    costs_(k) +=
   //        stage_cost_weight_[0] * std::pow((x.x(k, t) - reference(t, 0)), 2) +
   //        stage_cost_weight_[1] * std::pow((x.y(k, t) - reference(t, 1)), 2) +
-  //        stage_cost_weight_[2] * std::pow((x.yaw(k, t) - reference(t, 2)), 2)
-  //        + stage_cost_weight_[3] * std::pow((x.v(k, t) - reference(t, 3)),
+  //        stage_cost_weight_[2] * std::pow(std::atan2(std::sin(x.yaw(k, t) - reference(t, 2)),std::cos(x.yaw(k, t) - reference(t, 2))), 2);
+  //        stage_cost_weight_[3] * std::pow((x.v(k, t) - reference(t, 3)),
   //        2);
   //  }
   //}
@@ -78,7 +83,6 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
       stage_cost_weight_[2] *
       (x.yaw.rowwise() - reference.col(2).transpose().array()).square();
   
-  
   // TODO: add steer_rate to cost function
   // need correct u_steer_prev for 1st timestep
   //Eigen::ArrayXXf steer_diff = Eigen::ArrayXXf::Zero(K_, T_);
@@ -91,15 +95,15 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
   //auto steer_rate_costs = steer_rate_cost_weight * steer_diff.square();
   //costs_ += steer_rate_costs.rowwise().sum();
 
-  costs_ += x_errors.rowwise().sum();
-  costs_ += y_errors.rowwise().sum();
-  costs_ += v_errors.rowwise().sum();
-  costs_ += yaw_errors.rowwise().sum();
+  //costs_ += x_errors.rowwise().sum();
+  //costs_ += y_errors.rowwise().sum();
+  //costs_ += v_errors.rowwise().sum();
+  //costs_ += yaw_errors.rowwise().sum();
 
-  // terminal state goal cost
-  costs_ += 10.0f * ((x.x.col(T_ - 1) - reference(T_ - 1, 0)).square() +
-                        (x.y.col(T_ - 1) - reference(T_ - 1, 1)).square())
-                           .sqrt();
+  //// terminal state goal cost
+  //costs_ += 10.0f * ((x.x.col(T_ - 1) - reference(T_ - 1, 0)).square() +
+  //                      (x.y.col(T_ - 1) - reference(T_ - 1, 1)).square())
+  //                         .sqrt();
 
   auto bounded_noises_steer = x.steer.rowwise() - u_.steer.transpose();
   const float gamma_vx = param_gamma_ / (sigma_(0, 0) * sigma_(0, 0));
@@ -119,6 +123,7 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
   auto softmaxes = (-inv_temp * costs_normalized).exp().eval();
   softmaxes /= softmaxes.sum();
 
+  // update
   auto softmax_mat = softmaxes.matrix();
   u_.a = x.a.transpose().matrix() * softmax_mat;
   u_.steer = x.steer.transpose().matrix() * softmax_mat;
@@ -147,9 +152,12 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
   u_.steer(Eigen::seq(0, T_ - 2)) = u_.steer(Eigen::seq(1, T_ - 1)).eval();
   u_.a(Eigen::seq(0, T_ - 2)) = u_.a(Eigen::seq(1, T_ - 1)).eval();
 
+  // Set last control to zero (or maintain last value for continuity)
+  u_.steer(T_ - 1) = u_.steer(T_ - 2);
+  u_.a(T_ - 1) = u_.a(T_ - 2);
+
   // update ranking of costs
   // 1th: best (i.e. minimum cost), K: worst (i.e. maximum cost)
-  const auto best_x = std::ceil(K_ / 20);
   std::vector<int> costs_rank_(K_);
   std::iota(costs_rank_.begin(), costs_rank_.end(),
             0); // initialize costs_rank_ with 0, 1, 2, ..., K-1
@@ -159,12 +167,13 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
   // sort costs_rank_ based on score value
   // NOTE: best (minimum) cost is costs_[costs_rank_[0]], worst (maximum) cost
   // is costs_[costs_rank_[K-1]]
-  std::vector<Eigen::MatrixXf> best_samples(best_x);
-  for (std::size_t i = 0; i < best_x; i++) {
+  auto samples_to_return = std::ceil(K_/10);
+  std::vector<Eigen::MatrixXf> best_samples(samples_to_return);
+  for (std::size_t i = 0; i < best_samples.size(); i++) {
     Eigen::MatrixXf xx;
-    xx.setZero(2, T_);
-    xx.row(0) = x.x.row(costs_rank_[i]);
-    xx.row(1) = x.y.row(costs_rank_[i]);
+    xx.setZero(T_,2);
+    xx.col(0) = x.x.row(costs_rank_[i]);
+    xx.col(1) = x.y.row(costs_rank_[i]);
     best_samples[i] = xx;
   }
 
@@ -215,16 +224,11 @@ MatrixXf MPPI::reinterpolate_reference_trajectory(const MatrixXf &traj,
   }
 
   auto start_dist = cdist[closest_idx];
-
-  // TODO: make this work for reverse (negative velocities
-  auto v = x(3);
   float v_ref = traj.col(3).mean();
-  float a_max = (v < v_ref) ? a_max_abs_ : 0.0;
 
   Eigen::VectorXf intp_pts(T_);
   for (std::size_t i = 0; i < T_; i++) {
-    v = std::clamp(v + a_max * dt_, -v_ref, v_ref);
-    intp_pts(i) = std::clamp(start_dist + (i + 1) * v * dt_, cdist.head(1)[0],
+    intp_pts(i) = std::clamp(start_dist + (i + 1) * v_ref * dt_, cdist.head(1)[0],
                              cdist.tail(1)[0]);
   }
 

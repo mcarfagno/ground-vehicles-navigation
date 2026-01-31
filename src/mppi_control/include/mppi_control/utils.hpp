@@ -7,13 +7,13 @@
 
 static Eigen::ArrayXXf sample_noise(float stddev, std::size_t batch_size,
                              std::size_t time_steps) {
-  std::default_random_engine generator_;
-  generator_.seed(std::chrono::system_clock::now().time_since_epoch().count());
+  // Use thread-local static generator to maintain state across calls
+  static thread_local std::mt19937 generator(std::random_device{}());
 
-  std::normal_distribution<float> ndistribution =
-      std::normal_distribution(0.0f, stddev);
+  std::normal_distribution<float> dist(0.0f, stddev);
+
   return Eigen::ArrayXXf::NullaryExpr(
-      batch_size, time_steps, [&]() { return ndistribution(generator_); });
+    batch_size, time_steps, [&]() {return dist(generator);});
 }
 
 #endif
