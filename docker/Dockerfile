@@ -102,6 +102,8 @@ RUN git clone https://gitlab.engr.illinois.edu/gemillins/POLARIS_GEM_e2.git
 
 # Copy your source code
 COPY src/mppi_control ./mppi_control
+COPY src/mpc_gazebo ./mpc_gazebo
+COPY src/mpc_control ./mpc_control
 
 # Initialize rosdep and install dependencies
 WORKDIR /mpc_ws
