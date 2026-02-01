@@ -58,6 +58,23 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
   // Transform position errors from global (Cartesian) frame to path-relative
   // (Frenet) frame. This separates cross-track error (perpendicular to path)
   // from along-track error (along path direction).
+  //
+  //          FRENET FRAME
+  //          (along path, perpendicular to path)
+  //
+  //               ↑ perpendicular (cross-track)
+  //               │
+  //               │    ● Predicted
+  //               │   ╱│
+  //               │  ╱ │ e_cross
+  //               │ ╱  │
+  //          ─────●────┼───────────→ along path
+  //                 e_along
+  //
+  // where:
+  // along_track  = dx * cos(θ) + dy * sin(θ)     // Project onto path direction vector
+  // cross_track  = -dx * sin(θ) + dy * cos(θ)    // Project onto perpendicular to path direction vector
+
 
   // Compute position errors in global frame
   auto dx = x.x.rowwise() - reference.col(0).transpose().array();
