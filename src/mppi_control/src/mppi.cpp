@@ -47,63 +47,63 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
     x.y.col(t) = y_t_minus + v_t_minus * yaw_t_minus.sin() * dt_;
     x.yaw.col(t) = yaw_t_minus + v_t_minus / wheel_base_ * steer_t.tan() * dt_;
     x.v.col(t) = v_t_minus + accel_t * dt_;
-
-    // Wrap yaw angles to [-pi, pi] to prevent numerical issues
-    //x.yaw.col(t) = (x.yaw.col(t) + static_cast<float>(M_PI)).unaryExpr([](float a) {
-    //  return a - static_cast<float>(M_2_PI) * std::floor(a / static_cast<float>(M_2_PI));
-    //}) - static_cast<float>(M_PI);
   }
 
   Eigen::ArrayXf costs_;
   costs_.setZero(K_);
 
-  // TODO: make this without nested loop
-  // for (std::size_t k = 0; k < K_; k++) {
-  //  for (std::size_t t = 1; t < T_; t++) {
-  //    costs_(k) +=
-  //        stage_cost_weight_[0] * std::pow((x.x(k, t) - reference(t, 0)), 2) +
-  //        stage_cost_weight_[1] * std::pow((x.y(k, t) - reference(t, 1)), 2) +
-  //        stage_cost_weight_[2] * std::pow(std::atan2(std::sin(x.yaw(k, t) - reference(t, 2)),std::cos(x.yaw(k, t) - reference(t, 2))), 2);
-  //        stage_cost_weight_[3] * std::pow((x.v(k, t) - reference(t, 3)),
-  //        2);
-  //  }
-  //}
+  // ============================================================
+  // Frenet Frame Cost Computation
+  // ============================================================
+  // Transform position errors from global (Cartesian) frame to path-relative
+  // (Frenet) frame. This separates cross-track error (perpendicular to path)
+  // from along-track error (along path direction).
 
-  // accumulate stage cost
-  auto x_errors =
-      stage_cost_weight_[0] *
-      (x.x.rowwise() - reference.col(0).transpose().array()).square();
-  auto y_errors =
-      stage_cost_weight_[1] *
-      (x.y.rowwise() - reference.col(1).transpose().array()).square();
-  auto v_errors =
-      stage_cost_weight_[3] *
-      (x.v.rowwise() - reference.col(3).transpose().array()).square();
-  auto yaw_errors =
-      stage_cost_weight_[2] *
-      (x.yaw.rowwise() - reference.col(2).transpose().array()).square();
-  
-  // TODO: add steer_rate to cost function
-  // need correct u_steer_prev for 1st timestep
-  //Eigen::ArrayXXf steer_diff = Eigen::ArrayXXf::Zero(K_, T_);
-  //steer_diff.col(0) = x.steer.col(0) - u_.steer(0); 
+  // Compute position errors in global frame
+  auto dx = x.x.rowwise() - reference.col(0).transpose().array();
+  auto dy = x.y.rowwise() - reference.col(1).transpose().array();
 
-  //for(int t=1; t<T_; ++t) {
-  //    steer_diff.col(t) = x.steer.col(t) - x.steer.col(t-1);
-  //}
+  // Transform to Frenet frame for each timestep
+  Eigen::ArrayXXf cross_track_errors(K_, T_);
+  Eigen::ArrayXXf along_track_errors(K_, T_);
 
-  //auto steer_rate_costs = steer_rate_cost_weight * steer_diff.square();
-  //costs_ += steer_rate_costs.rowwise().sum();
+  for (std::size_t t = 0; t < T_; t++) {
+    float path_tangent = reference(t, 4);  // Path tangent angle
+    float sin_theta = std::sin(path_tangent);
+    float cos_theta = std::cos(path_tangent);
 
-  //costs_ += x_errors.rowwise().sum();
-  //costs_ += y_errors.rowwise().sum();
-  //costs_ += v_errors.rowwise().sum();
-  //costs_ += yaw_errors.rowwise().sum();
+    // Rotate errors into path frame
+    // Cross-track: perpendicular to path (lateral deviation)
+    cross_track_errors.col(t) = -dx.col(t) * sin_theta + dy.col(t) * cos_theta;
 
-  //// terminal state goal cost
-  //costs_ += 10.0f * ((x.x.col(T_ - 1) - reference(T_ - 1, 0)).square() +
-  //                      (x.y.col(T_ - 1) - reference(T_ - 1, 1)).square())
-  //                         .sqrt();
+    // Along-track: along path direction (longitudinal deviation)
+    along_track_errors.col(t) = dx.col(t) * cos_theta + dy.col(t) * sin_theta;
+  }
+
+  // Compute heading error relative to path tangent
+  Eigen::ArrayXXf heading_errors = x.yaw.array() - reference.col(4).array().transpose().replicate(K_, 1);
+
+  // Normalize angles to [-pi, pi] to handle wrapping
+  for (std::size_t k = 0; k < K_; k++) {
+    for (std::size_t t = 0; t < T_; t++) {
+      float error = heading_errors(k, t);
+      // Wrap to [-pi, pi]
+      while (error > M_PI) error -= 2.0f * M_PI;
+      while (error < -M_PI) error += 2.0f * M_PI;
+      heading_errors(k, t) = error;
+    }
+  }
+
+  // Velocity tracking error
+  auto v_errors = (x.v.rowwise() - reference.col(3).transpose().array()).square();
+
+  // Compute weighted stage costs
+  // Note: Progress reward is negative (we subtract it, so negative along_track = reward)
+  costs_ = w_cross_track_ * cross_track_errors.square().rowwise().sum() +
+           w_along_track_ * along_track_errors.square().rowwise().sum() +
+           w_heading_ * heading_errors.square().rowwise().sum() +
+           w_velocity_ * v_errors.rowwise().sum() -
+           w_progress_ * along_track_errors.rowwise().sum();  // Reward forward progress
 
   auto bounded_noises_steer = x.steer.rowwise() - u_.steer.transpose();
   const float gamma_vx = param_gamma_ / (sigma_(0, 0) * sigma_(0, 0));
@@ -145,8 +145,8 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
     optimal_traj.row(t) = xn;
   }
 
-  // get cmd
-  auto next_cmd = MppiCmd(u_.a(0), u_.steer(0));
+  // get cmd (steering, acceleration)
+  auto next_cmd = MppiCmd(u_.steer(0), u_.a(0));
 
   // shift nominal control sequence by 1 timestep to the left, for next iter
   u_.steer(Eigen::seq(0, T_ - 2)) = u_.steer(Eigen::seq(1, T_ - 1)).eval();
@@ -202,7 +202,7 @@ Vector2f MPPI::g_(const Vector2f &u_t) const {
 MatrixXf MPPI::reinterpolate_reference_trajectory(const MatrixXf &traj,
                                                   const Vector4f &x) const {
   Eigen::MatrixXf waypoints;
-  waypoints.setZero(T_, 4);
+  waypoints.setZero(T_, 5);  // 5 columns: [x, y, yaw, v, path_tangent]
 
   // Find the index of the closest trajectory point to the vehicle.
   std::vector<float> distances(traj.rows());
@@ -268,6 +268,15 @@ MatrixXf MPPI::reinterpolate_reference_trajectory(const MatrixXf &traj,
   for (std::size_t i = 1; i < T_; i++) {
     waypoints(i, 2) = unwrap(waypoints(i - 1, 2), waypoints(i, 2));
   }
+
+  // Compute path tangent angles (column 4) from consecutive waypoints
+  // This gives the actual direction of the path at each point
+  for (std::size_t t = 0; t < T_ - 1; t++) {
+    waypoints(t, 4) = std::atan2(waypoints(t + 1, 1) - waypoints(t, 1),
+                                  waypoints(t + 1, 0) - waypoints(t, 0));
+  }
+  // Extrapolate the last tangent angle
+  waypoints(T_ - 1, 4) = waypoints(T_ - 2, 4);
 
   return waypoints;
 }

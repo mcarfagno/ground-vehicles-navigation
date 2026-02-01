@@ -42,17 +42,19 @@ private:
   ros::Subscriber path_sub_;
   ros::Subscriber obstacles_sub_;
 
-  // TODO: redo these ?
   int mpc_horizon_steps_;
   int mpc_rollouts_;
   float rate_;
   float obs_safety_dist_;
-  float x_weight_;
-  float y_weight_;
-  float yaw_weight_;
-  float speed_weight_;
   float steer_noise_;
   float acc_noise_;
+
+  // Frenet frame cost weights
+  float cross_track_weight_;
+  float along_track_weight_;
+  float heading_weight_;
+  float velocity_weight_;
+  float progress_weight_;
 
   std::optional<MPPI> mppi_;
 

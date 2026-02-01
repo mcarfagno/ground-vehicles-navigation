@@ -84,17 +84,24 @@ public:
       const float param_lambda = 100.0,
       const float param_gamma = 0.0,
       const float steer_noise = 0.1,
-      const float accel_noise = 1.0
+      const float accel_noise = 1.0,
+      const float cross_track_weight = 100.0,
+      const float along_track_weight = 1.0,
+      const float heading_weight = 10.0,
+      const float velocity_weight = 20.0,
+      const float progress_weight = 5.0
       )
       : dt_(delta_t), T_(horizon_step_T), K_(number_of_samples_K),
         param_lambda_(param_lambda),
-        param_gamma_(param_gamma) {
+        param_gamma_(param_gamma),
+        w_cross_track_(cross_track_weight),
+        w_along_track_(along_track_weight),
+        w_heading_(heading_weight),
+        w_velocity_(velocity_weight),
+        w_progress_(progress_weight) {
 
     // Initialize noise covariance matrix with provided values
     sigma_ << steer_noise, 0.0, 0.0, accel_noise;
-    // TODO: these should be rosparams
-    stage_cost_weight_ << 50.0, 50.0, 1.0, 20.0;    // weight for [x, y, yaw, v]
-    terminal_cost_weight_ << 50.0, 50.0, 1.0, 20.0; // weight for [x, y, yaw, v]
 
     u_.reset(T_);
   }
@@ -124,8 +131,14 @@ private:
   float
       param_gamma_; // smoothness parameter, this should be a small number < 0.1
   Matrix2f sigma_;  // noise covariance matrix
-  Vector4f stage_cost_weight_;    // weight for [x, y, yaw, v]
-  Vector4f terminal_cost_weight_; // weight for [x, y, yaw, v]
+
+  // Frenet frame cost weights
+  float w_cross_track_;  // weight for cross-track error (perpendicular to path)
+  float w_along_track_;  // weight for along-track error (along path direction)
+  float w_heading_;      // weight for heading error relative to path tangent
+  float w_velocity_;     // weight for velocity tracking error
+  float w_progress_;     // weight for progress reward (negative cost)
+
   Control u_; // nominal control sequence (prev iteration)
 
   // vehicle parameters

@@ -15,11 +15,13 @@ MppiNode ::MppiNode() : private_nh_("~") {
   private_nh_.param("number_of_samples", mpc_rollouts_, int(1000));
   private_nh_.param("obstacles_safety_distance", obs_safety_dist_, float(0.25));
 
-  // weights of the cost function terms
-  private_nh_.param("x_pos_error_weight", x_weight_, float(50.0));
-  private_nh_.param("y_pos_error_weight", y_weight_, float(50.0));
-  private_nh_.param("heading_pos_error_weight", yaw_weight_, float(1.0));
-  private_nh_.param("speed_error_weight", speed_weight_, float(20.0));
+  // Frenet frame cost weights
+  private_nh_.param("cross_track_weight", cross_track_weight_, float(100.0));
+  private_nh_.param("along_track_weight", along_track_weight_, float(1.0));
+  private_nh_.param("heading_weight", heading_weight_, float(10.0));
+  private_nh_.param("velocity_weight", velocity_weight_, float(20.0));
+  private_nh_.param("progress_weight", progress_weight_, float(5.0));
+
   private_nh_.param("steer_noise", steer_noise_, float(0.3));
   private_nh_.param("acceleration_noise", acc_noise_, float(1.0));
 
@@ -71,7 +73,9 @@ void MppiNode::run() {
     if (!mppi_.has_value()) {
       ROS_INFO("MPPI controller instance");
       auto mppi = MPPI(1. / rate_, mpc_horizon_steps_, mpc_rollouts_,
-                      100.0, 0.02, steer_noise_, acc_noise_);
+                      100.0, 0.02, steer_noise_, acc_noise_,
+                      cross_track_weight_, along_track_weight_,
+                      heading_weight_, velocity_weight_, progress_weight_);
       mppi_.emplace(mppi);
     }
 
