@@ -23,7 +23,7 @@ namespace mppi {
 // TODO: this should be a rosparam
 static const float GPS_WORLD_ORIGIN_LAT = 40.09302492080515;
 static const float GPS_WORLD_ORIGIN_LON = -88.2357551253083;
-static const double MPPI_REF_SPEED = 10 / 3.6; // [m/s] -> 20km/h
+static const double MPPI_REF_SPEED = 20 / 3.6; // [m/s] -> 20km/h
 
 class MppiNode {
 public:

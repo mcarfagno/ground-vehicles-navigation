@@ -97,13 +97,22 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
   // Velocity tracking error
   auto v_errors = (x.v.rowwise() - reference.col(3).transpose().array()).square();
 
-  // Compute weighted stage costs
+  // Time-discounting weights: exponentially decay influence of distant timesteps
+  // This reduces end-of-horizon effects where predictions are less reliable
+  // instead focuses on near-term accuracy (just like in RL!)
+  Eigen::ArrayXf time_weights(T_);
+  const float discount_factor = 0.98f;
+  for (std::size_t t = 0; t < T_; t++) {
+    time_weights(t) = std::pow(discount_factor, static_cast<float>(t));
+  }
+
+  // Compute weighted stage costs with time discounting
   // Note: Progress reward is negative (we subtract it, so negative along_track = reward)
-  costs_ = w_cross_track_ * cross_track_errors.square().rowwise().sum() +
-           w_along_track_ * along_track_errors.square().rowwise().sum() +
-           w_heading_ * heading_errors.square().rowwise().sum() +
-           w_velocity_ * v_errors.rowwise().sum() -
-           w_progress_ * along_track_errors.rowwise().sum();  // Reward forward progress
+  costs_ = w_cross_track_ * (cross_track_errors.square().rowwise() * time_weights.transpose()).rowwise().sum() +
+           w_along_track_ * (along_track_errors.square().rowwise() * time_weights.transpose()).rowwise().sum() +
+           w_heading_ * (heading_errors.square().rowwise() * time_weights.transpose()).rowwise().sum() +
+           w_velocity_ * (v_errors.rowwise() * time_weights.transpose()).rowwise().sum() -
+           w_progress_ * (along_track_errors.rowwise() * time_weights.transpose()).rowwise().sum();  // Reward forward progress
 
   auto bounded_noises_steer = x.steer.rowwise() - u_.steer.transpose();
   const float gamma_vx = param_gamma_ / (sigma_(0, 0) * sigma_(0, 0));
@@ -152,9 +161,10 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
   u_.steer(Eigen::seq(0, T_ - 2)) = u_.steer(Eigen::seq(1, T_ - 1)).eval();
   u_.a(Eigen::seq(0, T_ - 2)) = u_.a(Eigen::seq(1, T_ - 1)).eval();
 
-  // Set last control to zero (or maintain last value for continuity)
-  u_.steer(T_ - 1) = u_.steer(T_ - 2);
-  u_.a(T_ - 1) = u_.a(T_ - 2);
+  // Decay last control toward neutral to avoid end-of-horizon bias
+  // This prevents steering from being artificially held at boundary
+  u_.steer(T_ - 1) = u_.steer(T_ - 2) * 0.5f;  // Decay steering toward 0
+  u_.a(T_ - 1) = u_.a(T_ - 2) * 0.7f;          // Gentle decay for acceleration
 
   // update ranking of costs
   // 1th: best (i.e. minimum cost), K: worst (i.e. maximum cost)
@@ -275,8 +285,18 @@ MatrixXf MPPI::reinterpolate_reference_trajectory(const MatrixXf &traj,
     waypoints(t, 4) = std::atan2(waypoints(t + 1, 1) - waypoints(t, 1),
                                   waypoints(t + 1, 0) - waypoints(t, 0));
   }
-  // Extrapolate the last tangent angle
-  waypoints(T_ - 1, 4) = waypoints(T_ - 2, 4);
+  // Extrapolate the last tangent angle using forward difference from last two points
+  // This better captures path curvature than simple copy
+  if (T_ >= 3) {
+    // Use curvature trend from last three points
+    float tangent_rate = waypoints(T_ - 2, 4) - waypoints(T_ - 3, 4);
+    // Unwrap angle difference
+    while (tangent_rate > M_PI) tangent_rate -= 2.0f * M_PI;
+    while (tangent_rate < -M_PI) tangent_rate += 2.0f * M_PI;
+    waypoints(T_ - 1, 4) = waypoints(T_ - 2, 4) + tangent_rate;
+  } else {
+    waypoints(T_ - 1, 4) = waypoints(T_ - 2, 4);
+  }
 
   return waypoints;
 }

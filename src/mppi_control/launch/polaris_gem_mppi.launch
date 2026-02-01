@@ -2,22 +2,22 @@
 <launch>
   <!-- MPPI Controller Parameters -->
   <arg name="rate" default="20.0"/>
-  <arg name="control_horizon" default="32"/>
+  <arg name="control_horizon" default="40"/>
   <arg name="number_of_samples" default="500"/>
   <arg name="safety_distance" default="0.5"/>
   <arg name="obstacle_weight" default="5.0"/>
 
   <!-- Frenet Frame Cost Weights -->
   <!-- These weights control path tracking behavior -->
-  <arg name="cross_track_weight" default="100.0"/>   <!-- Heavily penalize lateral deviation from path -->
+  <arg name="cross_track_weight" default="50.0"/>   <!-- Heavily penalize lateral deviation from path -->
   <arg name="along_track_weight" default="1.0"/>     <!-- Lightly penalize being ahead/behind -->
   <arg name="heading_weight" default="10.0"/>        <!-- Penalize heading misalignment with path -->
   <arg name="velocity_weight" default="20.0"/>       <!-- Penalize velocity tracking error -->
   <arg name="progress_weight" default="5.0"/>        <!-- Reward forward progress along path -->
 
   <!-- Noise Parameters -->
-  <arg name="steer_noise" default="0.3"/>
-  <arg name="acceleration_noise" default="1.0"/>
+  <arg name="steer_noise" default="0.15"/>
+  <arg name="acceleration_noise" default="0.6"/>
 
   <node name="mppi_node" pkg="mppi_control" type="mppi" respawn="false" output="screen">
     <param name="rate" value="$(arg rate)"/>
