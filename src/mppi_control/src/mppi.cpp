@@ -107,12 +107,17 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
   }
 
   // Compute weighted stage costs with time discounting
-  // Note: Progress reward is negative (we subtract it, so negative along_track = reward)
   costs_ = w_cross_track_ * (cross_track_errors.square().rowwise() * time_weights.transpose()).rowwise().sum() +
            w_along_track_ * (along_track_errors.square().rowwise() * time_weights.transpose()).rowwise().sum() +
            w_heading_ * (heading_errors.square().rowwise() * time_weights.transpose()).rowwise().sum() +
            w_velocity_ * (v_errors.rowwise() * time_weights.transpose()).rowwise().sum() -
            w_progress_ * (along_track_errors.rowwise() * time_weights.transpose()).rowwise().sum();  // Reward forward progress
+
+  // NOTE:
+  // along_track_errors² (quadratic penalty) -> Penalizes both directions equally: Being 2m ahead costs the same as 2m behind
+  // progress = along_track_errors (linear reward) -> Breaks symmetry: Being ahead is rewarded, behind is penalized
+  // keep both: synchronization (following a timed reference)
+  // Remove squared term if timing doesn't matter (go as fast as possible along the path)
 
   auto bounded_noises_steer = x.steer.rowwise() - u_.steer.transpose();
   const float gamma_vx = param_gamma_ / (sigma_(0, 0) * sigma_(0, 0));
@@ -163,8 +168,8 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0) {
 
   // Decay last control toward neutral to avoid end-of-horizon bias
   // This prevents steering from being artificially held at boundary
-  u_.steer(T_ - 1) = u_.steer(T_ - 2) * 0.5f;  // Decay steering toward 0
-  u_.a(T_ - 1) = u_.a(T_ - 2) * 0.7f;          // Gentle decay for acceleration
+  u_.steer(T_ - 1) = u_.steer(T_ - 2) * 0.5f;
+  u_.a(T_ - 1) = u_.a(T_ - 2) * 0.5f;
 
   // update ranking of costs
   // 1th: best (i.e. minimum cost), K: worst (i.e. maximum cost)
