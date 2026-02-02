@@ -182,7 +182,7 @@ void apply_savitzky_golay_filter(Eigen::DenseBase<Derived>& u) {
   typename Derived::PlainObject u_copy = u;
 
   // Coefficients: [-3, 12, 17, 12, -3] / 35.0
-  for (int i = 2; i < u.size() - 2; ++i) {
+  for (Eigen::Index i = 2; i < u.size() - 2; ++i) {
     u(i) = (-3.0f * u_copy(i - 2) + 
              12.0f * u_copy(i - 1) + 
              17.0f * u_copy(i) + 

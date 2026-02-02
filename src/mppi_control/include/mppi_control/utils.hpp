@@ -5,7 +5,7 @@
 #include <random>
 #include <utility>
 
-static Eigen::ArrayXXf sample_noise(float stddev, std::size_t batch_size,
+inline Eigen::ArrayXXf sample_noise(float stddev, std::size_t batch_size,
                              std::size_t time_steps) {
   // Use thread-local static generator to maintain state across calls
   static thread_local std::mt19937 generator(std::random_device{}());

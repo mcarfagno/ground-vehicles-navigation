@@ -238,7 +238,7 @@ MatrixXf MPPI::reinterpolate_reference_trajectory(const MatrixXf &traj,
 
   // Find the index of the closest trajectory point to the vehicle.
   std::vector<float> distances(traj.rows());
-  for (std::size_t i = 0; i < traj.rows(); i++) {
+  for (Eigen::Index i = 0; i < traj.rows(); i++) {
     distances[i] = std::hypot(x(0) - traj(i, 0), x(1) - traj(i, 1));
   }
 
@@ -250,7 +250,7 @@ MatrixXf MPPI::reinterpolate_reference_trajectory(const MatrixXf &traj,
   // these will be the interpolation knot points
   Eigen::RowVectorXf cdist(traj.rows());
   cdist(0) = 0.0;
-  for (std::size_t i = 1; i < traj.rows(); i++) {
+  for (Eigen::Index i = 1; i < traj.rows(); i++) {
     cdist(i) = cdist(i - 1) + std::hypot(traj(i, 0) - traj(i - 1, 0),
                                          traj(i, 1) - traj(i - 1, 1));
   }

@@ -149,7 +149,7 @@ void MppiNode::publish_rviz_markers(
   marker.lifetime = ros::Duration(1. / rate_);
 
   marker.points.resize(optimal_traj.rows());
-  for (std::size_t i = 0; i < optimal_traj.rows(); i++) {
+  for (Eigen::Index i = 0; i < optimal_traj.rows(); i++) {
     marker.points[i].x = optimal_traj(i, 0);
     marker.points[i].y = optimal_traj(i, 1);
   }
@@ -177,7 +177,7 @@ void MppiNode::publish_rviz_markers(
     s.lifetime = ros::Duration(1. / rate_);
 
     s.points.resize(sample.rows());
-    for (std::size_t i = 0; i < sample.rows(); i++) {
+    for (Eigen::Index i = 0; i < sample.rows(); i++) {
       s.points[i].x = sample(i, 0);
       s.points[i].y = sample(i, 1);
     }
@@ -207,7 +207,7 @@ Eigen::MatrixXf MppiNode::path_to_matrix(const nav_msgs::Path &path) const {
   }
 
   // workaround for lack of heading from GPS path
-  for (std::size_t i = 1; i < tmp.rows(); i++) {
+  for (Eigen::Index i = 1; i < tmp.rows(); i++) {
     tmp(i, 2) =
         std::atan2(tmp(i, 1) - tmp(i - 1, 1), tmp(i, 0) - tmp(i - 1, 0));
   }
