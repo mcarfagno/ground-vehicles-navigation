@@ -14,6 +14,7 @@ MppiNode ::MppiNode() : private_nh_("~") {
   private_nh_.param("control_horizon_len", mpc_horizon_steps_, int(30));
   private_nh_.param("number_of_samples", mpc_rollouts_, int(1000));
   private_nh_.param("obstacles_safety_distance", obs_safety_dist_, float(0.25));
+  private_nh_.param("obstacle_distance_weight", obstacle_avoidance_weight_, float(5.0));
 
   // Frenet frame cost weights
   private_nh_.param("cross_track_weight", cross_track_weight_, float(100.0));
@@ -75,7 +76,8 @@ void MppiNode::run() {
       auto mppi = MPPI(1. / rate_, mpc_horizon_steps_, mpc_rollouts_,
                       100.0, 0.02, steer_noise_, acc_noise_,
                       cross_track_weight_, along_track_weight_,
-                      heading_weight_, velocity_weight_, progress_weight_);
+                      heading_weight_, velocity_weight_, progress_weight_,
+                      obs_safety_dist_, obstacle_avoidance_weight_);
       mppi_.emplace(mppi);
     }
 
@@ -98,7 +100,8 @@ void MppiNode::run() {
         std::chrono::steady_clock::now();
     const auto [ctrl, x_opt, x_sampled] =
         mppi_->compute_optimal_input(path_to_matrix(path_.value()),
-                                     odometry_to_matrix(latest_odom_.value()));
+                                     odometry_to_matrix(latest_odom_.value()),
+                                     obstacles_to_matrix(obstacles_.value()));
     std::chrono::steady_clock::time_point end =
         std::chrono::steady_clock::now();
     std::cout << "MPPI Time = "

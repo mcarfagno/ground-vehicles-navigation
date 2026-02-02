@@ -56,6 +56,9 @@ private:
   float velocity_weight_;
   float progress_weight_;
 
+  // Obstacle avoidance parameters
+  float obstacle_avoidance_weight_;
+
   std::optional<MPPI> mppi_;
 
   std::optional<nav_msgs::Odometry> latest_odom_;

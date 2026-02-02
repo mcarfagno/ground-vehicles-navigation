@@ -89,7 +89,9 @@ public:
       const float along_track_weight = 1.0,
       const float heading_weight = 10.0,
       const float velocity_weight = 20.0,
-      const float progress_weight = 5.0
+      const float progress_weight = 5.0,
+      const float obstacle_margin = 0.25,
+      const float obstacle_avoidance_weight = 5.0
       )
       : dt_(delta_t), T_(horizon_step_T), K_(number_of_samples_K),
         param_lambda_(param_lambda),
@@ -98,7 +100,9 @@ public:
         w_along_track_(along_track_weight),
         w_heading_(heading_weight),
         w_velocity_(velocity_weight),
-        w_progress_(progress_weight) {
+        w_progress_(progress_weight),
+        obstacle_margin_(obstacle_margin),
+        obstacle_avoidance_weight_(obstacle_avoidance_weight) {
 
     // Initialize noise covariance matrix with provided values
     sigma_ << steer_noise, 0.0, 0.0, accel_noise;
@@ -113,9 +117,9 @@ public:
    * */
   void reset() {u_.reset(T_);}
 
-  // TODO: add obstacles
   std::tuple<MppiCmd, MatrixXf, std::vector<MatrixXf>>
-  compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0);
+  compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0,
+                       const MatrixXf &obstacles);
 
 private:
   // mppi parameters
@@ -138,6 +142,10 @@ private:
   float w_heading_;      // weight for heading error relative to path tangent
   float w_velocity_;     // weight for velocity tracking error
   float w_progress_;     // weight for progress reward (negative cost)
+
+  // Obstacle avoidance parameters
+  float obstacle_margin_;           // safety margin beyond obstacle radius [m]
+  float obstacle_avoidance_weight_; // weight for obstacle avoidance cost
 
   Control u_; // nominal control sequence (prev iteration)
 
