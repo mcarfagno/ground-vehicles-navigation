@@ -122,6 +122,9 @@ RUN source /opt/ros/noetic/setup.bash \
 # ============================================================================
 FROM dependencies as runtime
 
+ARG USER_UID=1000
+ARG USER_GID=1000
+
 # Copy built workspace from builder
 COPY --from=builder /mpc_ws/devel /mpc_ws/devel
 COPY --from=builder /mpc_ws/build /mpc_ws/build
