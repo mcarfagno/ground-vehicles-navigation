@@ -67,35 +67,35 @@ The vehicle is modelled in the controller the *bicycle model* kinematic equation
 | --- | --- | --- | --- | --- | --- |--- |
 | 1.75 m    | 1.2 m    | [-0.61,0.61] rad    | [-0.5,0.5] rad/s    | [0,10] m/s    | [-3,3] m/s^2   |  [-1.5,1.5] m/s^3  |
 
-## Instructions
+## Quick Start (Docker)
 
-For best results, see the **Docker** section below. 
-
-This demo is based on ROS [noetic](https://wiki.ros.org/noetic/Installation).
-
-You can run this in your ros workspce with the following (notable) dependencies
-* [POLARIS_GEM_e2 simulator](https://gitlab.engr.illinois.edu/gemillins/POLARIS_GEM_e2).
-* [CasADi](https://web.casadi.org/docs/) with IPOPT support.
-* [ipopt](https://coin-or.github.io/Ipopt/INSTALL.html) installed.
-
-### Build with Docker
-
-From this repository root directory:
+**Run the demo**:
 ```bash
-docker build -t mpc-demo -f docker/Dockerfile .
+cd docker
+docker compose up mpc-demo
 ```
 
-Run it:
+This will launch Gazebo simulation, RViz visualization, and the MPC controller.
+
+**Development mode** (live code editing):
 ```bash
-xhost +local:
-docker run -it --net=host --ipc=host --privileged \
-    --env="DISPLAY" \
-    --env="QT_X11_NO_MITSHM=1" \
-    --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
-    --volume="${XAUTHORITY}:/root/.Xauthority" \
-    mpc-demo:latest \
-    bash -c "roslaunch mpc_gazebo mpc_demo.launch"
+cd docker
+docker compose run --rm mpc-devel bash
+
+# Inside container:
+catkin build
+source devel/setup.bash
+roslaunch mpc_gazebo mpc_demo.launch
 ```
+
+See [docker/README.md](docker/README.md) for advanced options, GPU setup, and troubleshooting.
+
+## Manual Installation
+
+Requires ROS [noetic](https://wiki.ros.org/noetic/Installation) with:
+* [POLARIS_GEM_e2 simulator](https://gitlab.engr.illinois.edu/gemillins/POLARIS_GEM_e2)
+* [CasADi](https://web.casadi.org/docs/) with IPOPT support
+* [ipopt](https://coin-or.github.io/Ipopt/INSTALL.html)
 
 ### References
 * [1][MPC Berkley - genesis path follower](https://github.com/MPC-Berkeley/genesis_path_follower/tree/master)

@@ -2,6 +2,40 @@
 
 Multi-stage Docker setup with GUI support, GPU acceleration, and live development mode.
 
+## What is Multi-Stage Build?
+
+Instead of one massive Docker image with all build tools and dependencies, we use **multiple stages**:
+
+```
+┌──────┐
+│ base │ ← System packages & user setup
+└──┬───┘
+   │
+┌──▼────────────┐
+│ dependencies  │ ← Heavy deps (CasADi, Eigen) - CACHED!
+└──┬────────────┘
+   │
+   ├─► ┌─────────┐
+   │   │ builder │ ← Compiles workspace (only used for runtime)
+   │   └──┬──────┘
+   │      │
+   │   ┌──▼────────┐
+   │   │  runtime  │ ← Production: copies built code from builder
+   │   └───────────┘
+   │
+   └─► ┌───────┐
+       │ devel │ ← Development: mounts your source code
+       └───────┘
+```
+
+Docker caches each step (layer) in the Dockerfile. If nothing changes, it reuses the cached layer.
+This is why rebuilding after code changes is fast, but the first build is slow.
+
+**Benefits:**
+- **Faster rebuilds**: Dependencies are cached and don't rebuild when you change code
+- **Smaller images**: Production image has no compilers or build artifacts
+- **Flexibility**: Same Dockerfile produces both production and development images
+
 ## Quick Start
 
 ```bash
@@ -10,23 +44,15 @@ cd docker
 # Build images
 docker compose build
 
-# Run simulation (production)
+# Run simulation
 docker compose run --rm mpc-demo
 
-# Development mode (mounted source, dev tools)
+# Development mode (bash, mounted source, dev tools)
 docker compose run --rm mpc-devel
 
 # Custom command
 docker compose run --rm mpc-demo rosrun rviz rviz
-
-# Interactive shell
-docker compose run --rm mpc-devel bash
 ```
-
-## Container Types
-
-- **mpc-demo** (production): Pre-built workspace, optimized for demos/deployment
-- **mpc-devel** (development): Mounted source code, dev tools, live editing
 
 ## Development Workflow
 
@@ -42,21 +68,6 @@ roslaunch mpc_gazebo mpc_demo.launch
 
 Code changes on host are immediately reflected in container. Rebuild with `catkin build`.
 
-## GPU Support
-
-**Intel/AMD**: Works automatically via `/dev/dri`
-
-**NVIDIA**: Uncomment in `compose.yaml`:
-```yaml
-environment:
-  - NVIDIA_VISIBLE_DEVICES=all
-  - NVIDIA_DRIVER_CAPABILITIES=all
-deploy:
-  resources:
-    reservations:
-      devices: [{driver: nvidia, count: all, capabilities: [gpu]}]
-```
-
 ## GUI / Display
 
 The container runs as your host user (matching UID/GID) which provides:
@@ -66,62 +77,31 @@ The container runs as your host user (matching UID/GID) which provides:
 
 The setup mounts `/tmp/.X11-unix` and passes your `$DISPLAY` variable. GUI apps (Gazebo, RViz, etc.) should work out of the box.
 
-## Build Stages
-
-1. `base` - System dependencies
-2. `dependencies` - CasADi, Eigen 3.4+, ROS packages (heavy, cached)
-3. `builder` - Workspace build (runtime only)
-4. `runtime` / `devel` - Final images
-
-Target specific stages:
-```bash
-docker compose build --target devel mpc-devel
-```
 
 ## External Dependencies
 
-**POLARIS_GEM_e2** is automatically provided:
-- In production: Baked into the image
-- In development: Symlinked from `/opt/POLARIS_GEM_e2` if not in your host's `src/`
+The **POLARIS_GEM_e2** simulator is automatically handled:
 
-To use your own version, clone to `src/`:
+- **mpc-demo**: Cloned during image build, already available
+- **mpc-devel**: Symlinked from `/opt/POLARIS_GEM_e2` on first run (unless you already have it in `src/`)
+
+To use your own fork, clone it to your host:
 ```bash
 git clone https://gitlab.engr.illinois.edu/gemillins/POLARIS_GEM_e2.git src/POLARIS_GEM_e2
 ```
 
-## Persistent Build Artifacts
+The container will use your version instead of the symlink.
 
-Development uses named volumes for faster rebuilds:
-```bash
-docker volume ls | grep mpc  # View volumes
-docker volume rm docker_mpc-build docker_mpc-devel docker_mpc-logs  # Clean
-```
+## Persistent Volumes (Development)
 
-## Troubleshooting
+The `mpc-devel` container uses Docker volumes to store build artifacts:
+- `mpc-build`: Compiled objects (`.o` files, binaries)
+- `mpc-devel`: Installed packages and setup files
+- `mpc-logs`: Build and runtime logs
 
-**GUI not working?**
-- Check `$DISPLAY` is set: `echo $DISPLAY`
-- Verify X11 socket exists: `ls -la /tmp/.X11-unix/`
-- Test with simple app: `docker compose run --rm mpc-devel xclock`
+**Why?** So you don't rebuild everything when the container restarts.
 
-**Gazebo black screen or rendering issues?**
-```bash
-# Try software rendering
-docker compose run --rm -e LIBGL_ALWAYS_SOFTWARE=1 mpc-demo
-```
-
-**Build from scratch:**
-```bash
-docker compose build --no-cache
-```
-
-**Clean persistent volumes:**
+**Clean up** if something breaks:
 ```bash
 docker volume rm docker_mpc-build docker_mpc-devel docker_mpc-logs
 ```
-
-## Customization
-
-**Add ROS packages**: Edit Dockerfile `dependencies` stage
-**Change default command**: Modify `compose.yaml` command section
-**Mount additional volumes**: Add to `compose.yaml` volumes section

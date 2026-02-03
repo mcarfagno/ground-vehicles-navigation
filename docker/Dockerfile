@@ -1,8 +1,21 @@
-# Multi-stage Dockerfile for ROS Noetic with Gazebo
+# WHAT IS MULTI-STAGE BUILD?
+# Instead of one giant image with everything, we build multiple "stages" that
+# can depend on each other. This lets us:
+#   - Cache heavy dependencies separately (faster rebuilds)
+#   - Keep final images smaller (no build tools in production)
+#   - Have different images for different purposes (demo vs development)
+#
+# BUILD FLOW:
+#   base → dependencies → builder → runtime (production image)
+#                      └→ devel (development image)
+#
+# Each "FROM ... as <name>" creates a new stage that you can reference later.
 
 # ============================================================================
-# Base stage: Common dependencies
+# STAGE 1: base - System packages and user setup
 # ============================================================================
+# This stage installs basic tools and creates a user matching your host user.
+# Why? So files created in containers have the right permissions on your host.
 FROM osrf/ros:noetic-desktop-full as base
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -30,8 +43,11 @@ RUN groupadd -g ${USER_GID} ros && \
     echo "ros ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
 # ============================================================================
-# Dependencies stage: Heavy dependencies that rarely change
+# STAGE 2: dependencies - Heavy stuff that rarely changes
 # ============================================================================
+# This stage builds/installs CasADi, Eigen, and ROS packages.
+# These take a long time to build but rarely change, so Docker caches this layer.
+# Result: When you change your code, you don't rebuild these!
 FROM base as dependencies
 
 # Install CasADi dependencies
@@ -89,53 +105,63 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # ============================================================================
-# Build stage: Build the workspace
+# STAGE 3: builder - Compile the ROS workspace
 # ============================================================================
+# This stage only exists to build the code. We copy the compiled result to
+# the runtime stage, but don't ship the compiler or source code to production.
+# Think of it as a "build server" - does the work then throws away the tools.
 FROM dependencies as builder
 
-# Create workspace
+# Create workspace and copy source code
 RUN mkdir -p /mpc_ws/src
 WORKDIR /mpc_ws/src
 
-# Clone external dependencies
+# Clone external dependencies (POLARIS GEM simulator)
 RUN git clone https://gitlab.engr.illinois.edu/gemillins/POLARIS_GEM_e2.git
 
-# Copy your source code
+# Copy your source code from the host (the "context" is the parent directory)
 COPY src/mppi_control ./mppi_control
 COPY src/mpc_gazebo ./mpc_gazebo
 COPY src/mpc_control ./mpc_control
 
-# Initialize rosdep and install dependencies
+# Install any missing ROS package dependencies
 WORKDIR /mpc_ws
 RUN source /opt/ros/noetic/setup.bash \
     && rosdep update --rosdistro=noetic || true \
     && rosdep install -y --from-paths src --ignore-src --rosdistro noetic || true
 
-# Build with catkin build (better than catkin_make)
+# Build everything with catkin
 RUN source /opt/ros/noetic/setup.bash \
     && catkin config --extend /opt/ros/noetic \
     && catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release \
     && catkin build
 
 # ============================================================================
-# Runtime stage: Minimal runtime environment
+# STAGE 4a: runtime
 # ============================================================================
+# This is what you run in production. It starts from "dependencies" (which has
+# ROS and libraries) but NOT from "builder" (which has compilers and build tools).
+# Instead, we COPY the already-compiled workspace FROM the builder stage.
+# Result: Smaller image without build tools!
 FROM dependencies as runtime
 
+# ARG values don't carry across FROM statements, so we redeclare them here
+# These let docker compose pass your user ID so files have correct permissions
 ARG USER_UID=1000
 ARG USER_GID=1000
 
-# Copy built workspace from builder
+# Copy ONLY the compiled workspace from the builder stage (not the build tools!)
+# This is the magic of multi-stage: take artifacts, leave the junk behind
 COPY --from=builder /mpc_ws/devel /mpc_ws/devel
 COPY --from=builder /mpc_ws/build /mpc_ws/build
 COPY --from=builder /mpc_ws/src /mpc_ws/src
 
-# Set ownership for ros user
+# Set ownership so the ros user can access everything
 RUN chown -R ${USER_UID}:${USER_GID} /mpc_ws
 
 WORKDIR /mpc_ws
 
-# Set up entrypoint
+# Set up entrypoint script (sources ROS environment automatically)
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
@@ -143,11 +169,15 @@ ENTRYPOINT ["/entrypoint.sh"]
 CMD ["bash"]
 
 # ============================================================================
-# Development stage: For active development with mounted volumes
+# STAGE 4b: devel
 # ============================================================================
+# Unlike runtime, this stage does NOT copy compiled code. Instead, docker compose
+# mounts your host's src/ directory into the container. This means:
+#   - Edit code on your host → instantly reflected in container
+#   - You run "catkin build" inside the container when needed
 FROM dependencies as devel
 
-# Install additional development tools
+# Install development tools for debugging and editing inside the container
 RUN apt-get update && apt-get install -y \
     vim \
     nano \
@@ -157,15 +187,16 @@ RUN apt-get update && apt-get install -y \
     clang-tidy \
     && rm -rf /var/lib/apt/lists/*
 
-# Create workspace (source will be mounted)
+# Create workspace directory (your src/ will be mounted here by docker compose)
 RUN mkdir -p /mpc_ws/src && chown -R ${USER_UID}:${USER_GID} /mpc_ws
 WORKDIR /mpc_ws
 
-# Clone external dependencies outside the mount point
+# Clone external dependencies to /opt (outside the mount point)
+# The entrypoint script symlinks this to src/ if you don't have it on your host
 RUN git clone https://gitlab.engr.illinois.edu/gemillins/POLARIS_GEM_e2.git /opt/POLARIS_GEM_e2 && \
     chown -R ${USER_UID}:${USER_GID} /opt/POLARIS_GEM_e2
 
-# Set up entrypoint
+# Set up entrypoint script
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 

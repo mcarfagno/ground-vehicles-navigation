@@ -1,5 +1,4 @@
 services:
-  # Production/demo service - uses pre-built workspace
   mpc-demo:
     build:
       context: ..
@@ -24,16 +23,7 @@ services:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - /etc/localtime:/etc/localtime:ro
     command: roslaunch mpc_gazebo mpc_demo.launch
-    # Uncomment for NVIDIA GPU support
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: all
-    #           capabilities: [gpu]
 
-  # Development service - mounts source code for live editing
   mpc-devel:
     build:
       context: ..
