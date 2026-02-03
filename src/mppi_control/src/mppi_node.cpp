@@ -16,6 +16,11 @@ MppiNode ::MppiNode() : private_nh_("~") {
   private_nh_.param("obstacles_safety_distance", obs_safety_dist_, float(0.25));
   private_nh_.param("obstacle_distance_weight", obstacle_avoidance_weight_, float(5.0));
 
+  // Obstacle filtering parameters
+  private_nh_.param("obstacle_filter_min_ahead", obstacle_filter_min_ahead_, float(5.0));
+  private_nh_.param("obstacle_filter_lateral", obstacle_filter_lateral_, float(5.0));
+  private_nh_.param("obstacle_filter_horizon_factor", obstacle_filter_horizon_factor_, float(1.5));
+
   // Frenet frame cost weights
   private_nh_.param("cross_track_weight", cross_track_weight_, float(100.0));
   private_nh_.param("along_track_weight", along_track_weight_, float(1.0));
@@ -101,7 +106,8 @@ void MppiNode::run() {
     const auto [ctrl, x_opt, x_sampled] =
         mppi_->compute_optimal_input(path_to_matrix(path_.value()),
                                      odometry_to_matrix(latest_odom_.value()),
-                                     obstacles_to_matrix(obstacles_.value()));
+                                     filter_nearby_obstacles(obstacles_.value(), 
+                                                            latest_odom_.value()));
     std::chrono::steady_clock::time_point end =
         std::chrono::steady_clock::now();
     std::cout << "MPPI Time = "
@@ -188,6 +194,65 @@ void MppiNode::publish_rviz_markers(
   }
 
   viz_pub_.publish(std::move(marker_arr));
+}
+
+Eigen::MatrixXf MppiNode::filter_nearby_obstacles(
+    const vision_msgs::Detection3DArray &obstacles,
+    const nav_msgs::Odometry &odom) const {
+
+  // Extract vehicle state
+  const float vehicle_x = odom.pose.pose.position.x;
+  const float vehicle_y = odom.pose.pose.position.y;
+  const float vehicle_yaw = tf::getYaw(odom.pose.pose.orientation);
+  const float vehicle_speed = std::hypot(odom.twist.twist.linear.x, 
+                                         odom.twist.twist.linear.y);
+
+  // Compute dynamic lookahead distance based on prediction horizon
+  // ahead_distance = velocity × dt × horizon_steps × safety_factor
+  const float dt = 1.0f / rate_;
+  const float horizon_distance = vehicle_speed * dt * mpc_horizon_steps_ * 
+                                 obstacle_filter_horizon_factor_;
+  const float ahead_distance = std::max(obstacle_filter_min_ahead_, horizon_distance);
+
+  // Pre-compute rotation from world to vehicle frame
+  const float cos_yaw = std::cos(vehicle_yaw);
+  const float sin_yaw = std::sin(vehicle_yaw);
+
+  // Filter obstacles: keep only those within forward box
+  std::vector<Eigen::Vector3f> filtered_obstacles;
+  filtered_obstacles.reserve(obstacles.detections.size());
+
+  for (const auto& detection : obstacles.detections) {
+    const float obs_x = detection.bbox.center.position.x;
+    const float obs_y = detection.bbox.center.position.y;
+    const float obs_radius = detection.bbox.size.x;
+ 
+    // Transform to vehicle frame
+    const float dx = obs_x - vehicle_x;
+    const float dy = obs_y - vehicle_y;
+    const float local_x = dx * cos_yaw + dy * sin_yaw;  // longitudinal (forward)
+    const float local_y = -dx * sin_yaw + dy * cos_yaw; // lateral (left/right)
+
+    // Check if obstacle is within forward box region
+    // Include some margin behind vehicle (0m) to catch obstacles at vehicle position
+    if (local_x >= -obs_radius &&  // slightly behind (to include obstacles touching vehicle)
+        local_x <= ahead_distance + obs_radius &&  // ahead within horizon + radius
+        std::abs(local_y) <= obstacle_filter_lateral_ + obs_radius) {  // within lateral bounds + radius
+      filtered_obstacles.push_back(Eigen::Vector3f(obs_x, obs_y, obs_radius));
+    }
+  }
+
+  // Convert to matrix format
+  Eigen::MatrixXf result(filtered_obstacles.size(), 3);
+  for (size_t i = 0; i < filtered_obstacles.size(); i++) {
+    result.row(i) = filtered_obstacles[i];
+  }
+
+  ROS_DEBUG_THROTTLE(1.0, "Obstacle filtering: %lu -> %lu (speed=%.1f m/s, lookahead=%.1f m)",
+                     obstacles.detections.size(), filtered_obstacles.size(),
+                     vehicle_speed, ahead_distance);
+
+  return result;
 }
 
 Eigen::Vector4f

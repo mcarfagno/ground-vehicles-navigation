@@ -4,8 +4,13 @@
   <arg name="rate" default="20.0"/>
   <arg name="control_horizon" default="40"/>
   <arg name="number_of_samples" default="500"/>
-  <arg name="safety_distance" default="0.5"/>
+  <arg name="safety_distance" default="0.25"/>
   <arg name="obstacle_weight" default="1000.0"/>
+
+  <!-- Obstacle Filtering Parameters -->
+  <arg name="obstacle_filter_min_ahead" default="5.0"/>
+  <arg name="obstacle_filter_lateral" default="5.0"/>
+  <arg name="obstacle_filter_horizon_factor" default="1.5"/>
 
   <!-- Frenet Frame Cost Weights -->
   <!-- These weights control path tracking behavior -->
@@ -25,6 +30,11 @@
     <param name="number_of_samples" value="$(arg number_of_samples)"/>
     <param name="obstacles_safety_distance" value="$(arg safety_distance)"/>
     <param name="obstacle_distance_weight" value="$(arg obstacle_weight)"/>
+
+    <!-- Obstacle filtering parameters -->
+    <param name="obstacle_filter_min_ahead" value="$(arg obstacle_filter_min_ahead)"/>
+    <param name="obstacle_filter_lateral" value="$(arg obstacle_filter_lateral)"/>
+    <param name="obstacle_filter_horizon_factor" value="$(arg obstacle_filter_horizon_factor)"/>
 
     <!-- Frenet frame cost weights -->
     <param name="cross_track_weight" value="$(arg cross_track_weight)"/>

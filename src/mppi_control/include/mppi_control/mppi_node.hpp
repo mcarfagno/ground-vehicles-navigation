@@ -59,6 +59,11 @@ private:
   // Obstacle avoidance parameters
   float obstacle_avoidance_weight_;
 
+  // Obstacle filtering parameters
+  float obstacle_filter_min_ahead_;      // minimum lookahead distance [m]
+  float obstacle_filter_lateral_;        // lateral filtering distance [m]
+  float obstacle_filter_horizon_factor_; // multiplier for horizon-based filtering
+
   std::optional<MPPI> mppi_;
 
   std::optional<nav_msgs::Odometry> latest_odom_;
@@ -68,6 +73,9 @@ private:
   Eigen::Vector4f odometry_to_matrix(const nav_msgs::Odometry &odom) const;
   Eigen::MatrixXf
   obstacles_to_matrix(const vision_msgs::Detection3DArray &obs) const;
+  Eigen::MatrixXf
+  filter_nearby_obstacles(const vision_msgs::Detection3DArray &obs,
+                         const nav_msgs::Odometry &odom) const;
   Eigen::MatrixXf path_to_matrix(const nav_msgs::Path &path) const;
 
   void publish_mpc_cmd(double speed, double steer);

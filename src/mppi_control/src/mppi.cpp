@@ -152,28 +152,28 @@ MPPI::compute_optimal_input(const MatrixXf &trajectory, const Vector4f &x0,
 
   // obstacle avoidance
   // - works well but slows down the controller
-//  constexpr float STIFFNESS = 10.0f;
-//  const float margin = vehicle_width_ * 0.5f + obstacle_margin_;
-//
-//  // Loop through each obstacle (vectorized across all K rollouts and T timesteps)
-//  for (Eigen::Index obs_idx = 0; obs_idx < obstacles.rows(); obs_idx++) {
-//    const float obs_x = obstacles(obs_idx, 0);
-//    const float obs_y = obstacles(obs_idx, 1);
-//    const float obs_radius = obstacles(obs_idx, 2);
-//
-//    // Compute signed distance for all K rollouts across all T timesteps (fully vectorized)
-//    auto dx = (x.x.array() - obs_x).eval();
-//    auto dy = (x.y.array() - obs_y).eval();
-//    auto d = (dx.square() + dy.square()).sqrt() - obs_radius;
-//
-//    // Soft constraint: log(1 + exp(stiffness * (margin - d))) / stiffness
-//    // Goes to ~0 when d > margin (fully clear)
-//    // Increases smoothly as vehicle approaches obstacle
-//    auto obstacle_cost = ((1.0f + (STIFFNESS * (margin - d)).exp()).log() / STIFFNESS).eval();
-//
-//    // Sum across all timesteps for each rollout (K×T → K×1)
-//    costs_ += obstacle_avoidance_weight_ * obstacle_cost.rowwise().sum();
-//  }
+  constexpr float STIFFNESS = 10.0f;
+  const float margin = vehicle_width_ * 0.5f + obstacle_margin_;
+
+  // Loop through each obstacle (vectorized across all K rollouts and T timesteps)
+  for (Eigen::Index obs_idx = 0; obs_idx < obstacles.rows(); obs_idx++) {
+    const float obs_x = obstacles(obs_idx, 0);
+    const float obs_y = obstacles(obs_idx, 1);
+    const float obs_radius = obstacles(obs_idx, 2);
+
+    // Compute signed distance for all K rollouts across all T timesteps (fully vectorized)
+    auto dx = (x.x.array() - obs_x).eval();
+    auto dy = (x.y.array() - obs_y).eval();
+    auto d = (dx.square() + dy.square()).sqrt() - obs_radius;
+
+    // Soft constraint: log(1 + exp(stiffness * (margin - d))) / stiffness
+    // Goes to ~0 when d > margin (fully clear)
+    // Increases smoothly as vehicle approaches obstacle
+    auto obstacle_cost = ((1.0f + (STIFFNESS * (margin - d)).exp()).log() / STIFFNESS).eval();
+
+    // Sum across all timesteps for each rollout (K×T → K×1)
+    costs_ += obstacle_avoidance_weight_ * obstacle_cost.rowwise().sum();
+  }
 
   auto costs_normalized = costs_ - costs_.minCoeff();
   const float inv_temp = 1.0f / param_lambda_;
